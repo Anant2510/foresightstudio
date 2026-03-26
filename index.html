@@ -354,22 +354,67 @@ function saveCustom(a){localStorage.setItem("fs_personas",JSON.stringify(a))}
 function getAll(){return PRESETS.concat(loadCustom())}
 var S={type:"digital-ad",mode:"single",crA:{},crB:{},sel:["yp","af","nr","sb"],conn:false,resA:[],resB:[],chatHistory:[],cancelled:false};
 
-var _AK="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";
+var _AK="";
 function gk(){return _AK}
 
+// Read key from URL: ?key=sk-ant-...
+function getKeyFromURL(){
+  var params=new URLSearchParams(window.location.search);
+  return params.get("key")||"";
+}
+
 // INIT
-renderTypes();renderFields();renderPersonas();autoConnect();
+_AK=getKeyFromURL();
+renderTypes();renderFields();renderPersonas();
+
+if(_AK){
+  autoConnect();
+} else {
+  showKeyInput("No API key found in URL. Add ?key=YOUR_KEY to the URL, or enter it below");
+  updateRunBtn();renderSteps();updateHistBtn();
+}
 
 async function autoConnect(){
   document.getElementById("navStatus").textContent="Connecting...";
-  try{await apiCall("Reply: ok",20);S.conn=true;document.getElementById("navDot").classList.add("on");document.getElementById("navStatus").textContent="AI Engine Ready"}
-  catch(e){document.getElementById("navStatus").textContent="Connection failed — retrying...";setTimeout(autoConnect,3000)}
+  try{await apiCall("Reply: ok",20);S.conn=true;document.getElementById("navDot").classList.add("on");document.getElementById("navStatus").textContent="AI Engine Ready";
+    var ki=document.getElementById("keyInputCard");if(ki)ki.style.display="none";
+  }
+  catch(e){
+    document.getElementById("navStatus").textContent="Connection issue";
+    showKeyInput(e.message);
+  }
   updateRunBtn();renderSteps();updateHistBtn();
+}
+
+function showKeyInput(errMsg){
+  var card=document.getElementById("keyInputCard");
+  if(!card){
+    card=document.createElement("div");card.id="keyInputCard";
+    card.className="glass-card card-glow";
+    card.style.borderColor="rgba(124,92,252,0.3)";
+    card.innerHTML='<h3 style="color:var(--accent2);font-size:13px;margin-bottom:8px">&#128273; Authentication Required</h3><p class="desc" id="keyErrMsg"></p><div class="row" style="align-items:flex-end"><div style="flex:3"><label>API Key</label><div style="position:relative"><input type="password" id="manualKey" placeholder="sk-ant-api03-..." style="font-size:12px"/><button onclick="toggleManualKey()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer" id="mkToggle">show</button></div></div><div style="flex:0"><button class="btn btn-accent btn-sm" onclick="retryWithKey()">Connect</button></div></div><p style="font-size:11px;color:var(--text3);margin-top:10px">Tip: Add <code style="background:var(--surface2);padding:2px 6px;border-radius:4px">?key=YOUR_KEY</code> to the URL to auto-connect next time.</p>';
+    document.getElementById("stepsBar").after(card);
+  }
+  card.style.display="block";
+  document.getElementById("keyErrMsg").textContent=errMsg;
+}
+
+function toggleManualKey(){var i=document.getElementById("manualKey"),b=document.getElementById("mkToggle");if(i.type==="password"){i.type="text";b.textContent="hide"}else{i.type="password";b.textContent="show"}}
+
+function retryWithKey(){
+  var k=document.getElementById("manualKey").value.trim();
+  if(!k){alert("Please enter an API key.");return}
+  _AK=k;
+  // Update URL without reload so it persists on refresh
+  var url=new URL(window.location);
+  url.searchParams.set("key",k);
+  window.history.replaceState({},"",url);
+  autoConnect();
 }
 
 async function apiCall(prompt,mx){
   var ctrl=new AbortController();var tm=setTimeout(function(){ctrl.abort()},90000);
-  try{var r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":gk(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:mx||1000,messages:[{role:"user",content:prompt}]}),signal:ctrl.signal});clearTimeout(tm);if(!r.ok){var e=await r.text();throw new Error("HTTP "+r.status)}var d=await r.json();return d.content.map(function(b){return b.text||""}).join("")}
+  try{var r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":gk(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:mx||1000,messages:[{role:"user",content:prompt}]}),signal:ctrl.signal});clearTimeout(tm);if(!r.ok){var e=await r.text();var parsed="";try{parsed=JSON.parse(e).error.message}catch(x){parsed=e.substring(0,150)};throw new Error(r.status+": "+parsed)}var d=await r.json();return d.content.map(function(b){return b.text||""}).join("")}
   catch(e){clearTimeout(tm);if(e.name==="AbortError")throw new Error("Request timed out (90s)");throw e}
 }
 
