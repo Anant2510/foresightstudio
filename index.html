@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Foresight Studio</title>
+<style>
+:root{--bg:#0a0a12;--surface:#12121e;--surface2:#1a1a2e;--surface3:#22223a;--border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);--text:#e8e8f0;--text2:#8888a0;--text3:#555568;--accent:#7c5cfc;--accent2:#a78bfa;--accent-glow:rgba(124,92,252,0.3);--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;--blue:#3b82f6;--glass:rgba(255,255,255,0.03);--glass2:rgba(255,255,255,0.06)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+/* BG Gradient Mesh */
+body::before{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle at 20% 50%,rgba(124,92,252,0.08) 0%,transparent 50%),radial-gradient(circle at 80% 20%,rgba(59,130,246,0.06) 0%,transparent 50%),radial-gradient(circle at 50% 80%,rgba(167,139,250,0.05) 0%,transparent 50%);z-index:0;animation:meshMove 20s ease-in-out infinite alternate}
+@keyframes meshMove{0%{transform:translate(0,0)}100%{transform:translate(-5%,3%)}}
+.app{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:24px}
+/* NAV */
+.nav{display:flex;justify-content:space-between;align-items:center;padding:16px 0;margin-bottom:32px}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--blue));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff}
+.logo-text{font-size:18px;font-weight:700;letter-spacing:-0.5px}
+.logo-sub{font-size:11px;color:var(--text2);font-weight:400}
+.nav-status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--text3)}
+.status-dot.on{background:var(--green);box-shadow:0 0 8px rgba(34,197,94,0.5)}
+/* CARDS */
+.glass-card{background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px;transition:all 0.3s}
+.glass-card:hover{border-color:var(--border2)}
+.glass-card h3{font-size:14px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.glass-card .desc{font-size:12px;color:var(--text2);margin-bottom:16px}
+.card-glow{box-shadow:0 0 40px rgba(124,92,252,0.08),inset 0 1px 0 rgba(255,255,255,0.05)}
+/* INPUTS */
+input,textarea,select{width:100%;padding:12px 16px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:all 0.2s}
+input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+textarea{min-height:64px;resize:vertical}
+input::placeholder,textarea::placeholder{color:var(--text3)}
+label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+.field{margin-bottom:14px}
+/* BUTTONS */
+.btn{padding:12px 24px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.3s;font-family:inherit}
+.btn-accent{background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;box-shadow:0 4px 20px var(--accent-glow)}
+.btn-accent:hover{transform:translateY(-1px);box-shadow:0 6px 30px var(--accent-glow)}
+.btn-accent:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+.btn-full{width:100%;padding:16px;font-size:15px}
+.btn-ghost{background:var(--glass2);color:var(--text);border:1px solid var(--border2)}
+.btn-ghost:hover{background:var(--glass);border-color:var(--accent)}
+.btn-sm{padding:8px 16px;font-size:12px;border-radius:8px}
+/* CHIPS */
+.chip-row{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:10px 20px;border-radius:10px;border:1px solid var(--border2);background:var(--glass);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s}
+.chip:hover{border-color:var(--accent);color:var(--text)}
+.chip.on{border-color:var(--accent);background:rgba(124,92,252,0.15);color:var(--accent2)}
+/* PERSONA GRID */
+.p-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.p-card{padding:14px 18px;border-radius:12px;border:1px solid var(--border);background:var(--glass);cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden}
+.p-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0;transition:opacity 0.3s}
+.p-card:hover::before{opacity:1}
+.p-card.on{border-color:var(--accent);background:rgba(124,92,252,0.08)}
+.p-card.on::before{opacity:1}
+.p-card .p-name{font-weight:600;font-size:13px;margin-bottom:2px}
+.p-card .p-seg{font-size:11px;color:var(--text3)}
+.p-card .p-badge{position:absolute;top:10px;right:10px;font-size:9px;font-weight:700;background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px}
+.p-add{border:1px dashed var(--border2);text-align:center;color:var(--accent2);font-weight:600;font-size:13px}
+.p-add:hover{border-color:var(--accent);background:rgba(124,92,252,0.05)}
+/* MODE TOGGLE */
+.mode-toggle{display:flex;background:var(--surface);border-radius:10px;padding:3px;border:1px solid var(--border)}
+.mode-opt{flex:1;padding:10px 16px;border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;transition:all 0.2s}
+.mode-opt.on{background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff}
+/* AB COLUMNS */
+.ab-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
+.ab-col{border-radius:14px;padding:18px;position:relative}
+.ab-col.col-a{background:rgba(124,92,252,0.06);border:1px solid rgba(124,92,252,0.2)}
+.ab-col.col-b{background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2)}
+.ab-tag{font-size:10px;font-weight:800;letter-spacing:2px;margin-bottom:12px}
+.ab-tag.tag-a{color:var(--accent2)}
+.ab-tag.tag-b{color:var(--yellow)}
+/* STEP INDICATOR */
+.steps{display:flex;gap:0;margin-bottom:28px;position:relative}
+.steps::before{content:'';position:absolute;top:14px;left:28px;right:28px;height:1px;background:var(--border)}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;z-index:1}
+.step-dot{width:28px;height:28px;border-radius:50%;background:var(--surface2);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text3);transition:all 0.3s}
+.step.active .step-dot{border-color:var(--accent);background:var(--accent);color:#fff;box-shadow:0 0 20px var(--accent-glow)}
+.step.done .step-dot{border-color:var(--green);background:var(--green);color:#fff}
+.step-label{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.step.active .step-label{color:var(--accent2)}
+.step.done .step-label{color:var(--green)}
+/* PROCESSING ANIMATION */
+.proc-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,10,18,0.92);z-index:500;display:flex;align-items:center;justify-content:center}
+.proc-content{text-align:center;max-width:480px}
+.proc-ring{width:120px;height:120px;margin:0 auto 24px;position:relative}
+.proc-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.proc-ring .ring-bg{fill:none;stroke:var(--surface3);stroke-width:4}
+.proc-ring .ring-fill{fill:none;stroke:url(#ringGrad);stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset 0.5s ease}
+.proc-pct{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:28px;font-weight:800;color:var(--text)}
+.proc-title{font-size:20px;font-weight:700;margin-bottom:8px}
+.proc-persona{font-size:14px;color:var(--accent2);margin-bottom:24px}
+.proc-log{text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;max-height:180px;overflow-y:auto}
+.proc-log-line{font-size:12px;font-family:'JetBrains Mono',monospace;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.proc-log-line .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot-ok{background:var(--green)}.dot-err{background:var(--red)}.dot-info{background:var(--blue)}
+.proc-log-line .log-time{color:var(--text3);min-width:65px}
+.proc-log-line .log-msg{color:var(--text2)}
+.proc-log-line.ok .log-msg{color:var(--green)}
+.proc-log-line.err .log-msg{color:var(--red)}
+/* LIVE PULSE */
+@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}
+.pulse{animation:pulse 1.5s ease-in-out infinite}
+/* RESULTS */
+.res-hero{background:linear-gradient(135deg,rgba(124,92,252,0.15),rgba(59,130,246,0.1));border:1px solid rgba(124,92,252,0.2);border-radius:16px;padding:28px;display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+.res-hero .res-label{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase}
+.res-hero .res-detail{font-size:16px;color:var(--text);margin-top:4px}
+.res-avg{font-size:48px;font-weight:800;letter-spacing:-2px}
+/* HEATMAP */
+.heat-table{width:100%;border-collapse:separate;border-spacing:4px;font-size:12px}
+.heat-table th{padding:8px;color:var(--text3);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:0.5px}
+.heat-table td{padding:10px;text-align:center;border-radius:8px;font-weight:700;background:var(--surface)}
+.heat-table td:first-child{text-align:left;font-weight:600;background:transparent;color:var(--text2)}
+/* RESULT CARD */
+.res-card{background:var(--glass);border:1px solid var(--border);border-radius:14px;margin-bottom:14px;overflow:hidden}
+.res-card-header{padding:16px 20px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:background 0.2s}
+.res-card-header:hover{background:var(--glass2)}
+.res-card-body{padding:0 20px 20px}
+.score-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.score-label{width:140px;font-size:12px;color:var(--text2);flex-shrink:0}
+.score-track{flex:1;height:6px;background:var(--surface3);border-radius:3px;overflow:hidden}
+.score-fill{height:100%;border-radius:3px;transition:width 0.8s ease-out}
+.score-val{width:30px;font-size:13px;font-weight:700;text-align:right}
+.insight-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.insight-box{padding:14px;border-radius:10px;border:1px solid var(--border)}
+.insight-box .ins-label{font-size:10px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px}
+.insight-box .ins-text{font-size:12px;color:var(--text2);line-height:1.6}
+.ins-green{border-color:rgba(34,197,94,0.2);background:rgba(34,197,94,0.05)}.ins-green .ins-label{color:var(--green)}
+.ins-red{border-color:rgba(239,68,68,0.2);background:rgba(239,68,68,0.05)}.ins-red .ins-label{color:var(--red)}
+.ins-yellow{border-color:rgba(245,158,11,0.2);background:rgba(245,158,11,0.05)}.ins-yellow .ins-label{color:var(--yellow)}
+.ins-purple{border-color:rgba(124,92,252,0.2);background:rgba(124,92,252,0.05)}.ins-purple .ins-label{color:var(--accent2)}
+/* AGENT CHAT */
+.agent-panel{border:1px solid var(--border);border-radius:16px;margin-top:24px;overflow:hidden}
+.agent-head{padding:16px 20px;background:linear-gradient(135deg,var(--surface2),var(--surface3));display:flex;justify-content:space-between;align-items:center}
+.agent-head h3{font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.agent-head h3 .agent-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(34,197,94,0.5)}
+.chat-area{max-height:400px;overflow-y:auto;padding:16px}
+.chat-msg{margin-bottom:14px;display:flex;gap:10px}
+.chat-msg.user{justify-content:flex-end}
+.chat-bubble{max-width:80%;padding:14px 18px;border-radius:14px;font-size:13px;line-height:1.7}
+.chat-msg.user .chat-bubble{background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.agent .chat-bubble{background:var(--surface2);color:var(--text2);border-bottom-left-radius:4px;border:1px solid var(--border)}
+.chat-icon{width:28px;height:28px;background:linear-gradient(135deg,var(--accent),var(--blue));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+.chat-sugs{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 12px}
+.chat-sug{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:8px 16px;font-size:12px;color:var(--accent2);cursor:pointer;font-family:inherit;transition:all 0.2s}
+.chat-sug:hover{border-color:var(--accent);background:rgba(124,92,252,0.1)}
+.chat-input-bar{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface)}
+.chat-input-bar input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;color:var(--text);font-size:13px;outline:none}
+.chat-input-bar input:focus{border-color:var(--accent)}
+.chat-send-btn{background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;border:none;padding:12px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-size:13px}
+/* AB RESULTS */
+.ab-hero{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;margin-bottom:20px}
+.ab-score-box{text-align:center;padding:24px;border-radius:16px;border:1px solid var(--border)}
+.ab-score-box.winner{border-color:var(--accent);box-shadow:0 0 30px var(--accent-glow)}
+.ab-score-val{font-size:48px;font-weight:800;letter-spacing:-2px}
+.ab-vs{font-size:24px;font-weight:800;color:var(--text3)}
+.winner-tag{display:inline-block;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;color:#fff;margin-top:8px}
+.win-a{background:var(--accent)}.win-b{background:var(--yellow)}.win-tie{background:var(--text3)}
+/* SECTION LABEL */
+.sec-label{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.sec-label .sec-line{flex:1;height:1px;background:var(--border)}
+/* MODAL */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,10,18,0.85);z-index:300;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.modal-box{background:var(--surface);border:1px solid var(--border2);border-radius:20px;max-width:720px;width:95%;max-height:90vh;overflow-y:auto;padding:28px;position:relative}
+.modal-close{position:absolute;top:16px;right:20px;background:none;border:none;color:var(--text3);font-size:24px;cursor:pointer}
+.modal-close:hover{color:var(--text)}
+.modal-title{font-size:22px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:13px;color:var(--text2);margin-bottom:20px}
+.tab-bar{display:flex;background:var(--surface2);border-radius:10px;padding:3px;margin-bottom:20px}
+.tab-item{flex:1;padding:10px;text-align:center;border-radius:8px;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;transition:all 0.2s}
+.tab-item.on{background:var(--accent);color:#fff}
+.gen-btn{background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;border:none;padding:14px;border-radius:10px;width:100%;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.gen-btn:disabled{opacity:0.4}
+.preview-card{background:var(--surface2);border:1px solid rgba(124,92,252,0.2);border-radius:12px;padding:18px;margin-top:12px}
+.preview-card h4{font-size:14px;font-weight:700;color:var(--accent2);margin-bottom:4px}
+.preview-card .pv-seg{font-size:12px;color:var(--text3);margin-bottom:8px}
+.preview-card .pv-profile{font-size:13px;color:var(--text2);line-height:1.6}
+.save-btn{background:var(--green);color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-top:10px}
+/* UTILITY */
+.hid{display:none!important}
+.row{display:flex;gap:12px}
+.row>*{flex:1}
+.mt-sm{margin-top:8px}.mt-md{margin-top:16px}.mt-lg{margin-top:24px}
+.hiw-link{font-size:11px;color:var(--accent2);cursor:pointer;font-weight:600;background:none;border:none;font-family:inherit}
+.hiw-link:hover{text-decoration:underline}
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+/* GLOW LINE */
+.glow-line{height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);margin:20px 0;opacity:0.3}
+  /* HISTORY */
+  .hist-card{background:var(--glass);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:12px;cursor:pointer;transition:all 0.2s;position:relative}
+  .hist-card:hover{border-color:var(--accent);background:var(--glass2)}
+  .hist-card .hist-date{font-size:11px;color:var(--text3);font-weight:600}
+  .hist-card .hist-title{font-size:15px;font-weight:700;margin:4px 0}
+  .hist-card .hist-meta{font-size:12px;color:var(--text2);display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
+  .hist-card .hist-meta span{display:flex;align-items:center;gap:4px}
+  .hist-card .hist-score{position:absolute;top:18px;right:20px;font-size:24px;font-weight:800}
+  .hist-card .hist-del{position:absolute;bottom:12px;right:16px;font-size:11px;color:var(--red);background:rgba(239,68,68,0.1);border:none;border-radius:4px;padding:3px 10px;cursor:pointer;opacity:0;transition:opacity 0.2s}
+  .hist-card:hover .hist-del{opacity:1}
+  .hist-card .hist-badges{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .hist-card .hist-badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;background:var(--surface2);color:var(--text3)}
+  .hist-empty{text-align:center;padding:60px 20px;color:var(--text3)}
+  .hist-empty .hist-empty-icon{font-size:48px;margin-bottom:12px;opacity:0.3}
+  .hist-empty p{font-size:14px;line-height:1.6}
+  .hist-trend{display:flex;align-items:center;gap:6px;font-size:12px}
+  .hist-trend .up{color:var(--green)}
+  .hist-trend .down{color:var(--red)}
+  .hist-trend .flat{color:var(--text3)}
+  .hist-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+  .hist-stat{background:var(--glass);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+  .hist-stat .stat-val{font-size:28px;font-weight:800;margin-bottom:2px}
+  .hist-stat .stat-label{font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<svg style="position:absolute;width:0;height:0"><defs><linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7c5cfc"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient></defs></svg>
+
+<div class="app" id="app">
+  <!-- NAV -->
+  <div class="nav">
+    <div class="logo">
+      <div class="logo-icon">FS</div>
+      <div><div class="logo-text">Foresight Studio</div><div class="logo-sub">Predict Creative Performance Before Launch</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <button class="btn btn-ghost btn-sm" onclick="showHistory()" id="histBtn" style="display:none">History <span id="histCount" style="background:var(--accent);color:#fff;padding:1px 7px;border-radius:10px;font-size:10px;margin-left:4px"></span></button>
+      <div class="nav-status"><div class="status-dot" id="navDot"></div><span id="navStatus">Initializing...</span></div>
+    </div>
+  </div>
+
+  <!-- SETUP VIEW -->
+  <div id="setupView">
+    <!-- STEPS -->
+    <div class="steps" id="stepsBar"></div>
+
+    <!-- STEP 1: REMOVED — auto-connect on load -->
+
+    <!-- STEP 2: MODE + TYPE -->
+    <div id="step2" class="glass-card">
+      <h3><span style="color:var(--accent)">01</span> Choose Your Experiment</h3>
+      <p class="desc">Test a single creative or compare two variants head-to-head.</p>
+      <div class="mode-toggle" style="margin-bottom:16px">
+        <div class="mode-opt on" onclick="setMode('single',this)">Single Creative</div>
+        <div class="mode-opt" onclick="setMode('ab',this)">A/B Comparison</div>
+      </div>
+      <label>Creative Format</label>
+      <div class="chip-row" id="typeChips"></div>
+    </div>
+
+    <!-- STEP 3: CREATIVE -->
+    <div id="step3" class="glass-card">
+      <h3><span style="color:var(--accent)">02</span> Enter Your Creative</h3>
+      <p class="desc" id="creativeDesc">Paste the copy you want to test.</p>
+      <div id="fieldsArea"></div>
+    </div>
+
+    <!-- STEP 4: PERSONAS -->
+    <div id="step4" class="glass-card">
+      <h3><span style="color:var(--accent)">03</span> Select Personas</h3>
+      <p class="desc">Choose which audience segments to test against. <button class="hiw-link" onclick="document.getElementById('hiwPersona').style.display='block';window.scrollTo(0,0)">How we build personas from CDP data &rarr;</button></p>
+      <div class="p-grid" id="pGrid"></div>
+    </div>
+
+    <!-- LAUNCH -->
+    <button class="btn btn-accent btn-full mt-md" id="runBtn" onclick="run()" disabled>Initializing AI Engine...</button>
+  </div>
+
+  <!-- RESULTS VIEW -->
+  <div id="resView" class="hid"></div>
+  <div id="histView" class="hid"></div>
+</div>
+
+<!-- PROCESSING OVERLAY -->
+<div class="proc-overlay hid" id="procOverlay">
+  <div class="proc-content">
+    <div class="proc-ring">
+      <svg viewBox="0 0 120 120"><circle class="ring-bg" cx="60" cy="60" r="54"/><circle class="ring-fill" cx="60" cy="60" r="54" stroke-dasharray="339.292" stroke-dashoffset="339.292" id="ringFill"/></svg>
+      <div class="proc-pct" id="procPct">0%</div>
+    </div>
+    <div class="proc-title" id="procTitle">Analyzing Creative</div>
+    <div class="proc-persona pulse" id="procPersona">Initializing AI engine...</div>
+    <div class="proc-log" id="procLog"></div>
+    <button onclick="cancelRun()" style="margin-top:16px;background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3);padding:10px 24px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" id="cancelBtn">Cancel Experiment</button>
+  </div>
+</div>
+
+<!-- PERSONA MODAL (same logic as before, new skin) -->
+<div class="modal-overlay hid" id="personaModal" onclick="if(event.target===this)closeModal()">
+<div class="modal-box" onclick="event.stopPropagation()">
+  <button class="modal-close" onclick="closeModal()">&#215;</button>
+  <div class="modal-title">Create Custom Persona</div>
+  <div class="modal-sub">Build from your segment data — AI generates the psychology.</div>
+  <div class="tab-bar"><div class="tab-item on" onclick="setTab('manual',this)">Manual Input</div><div class="tab-item" onclick="setTab('data',this)">Paste Data / CSV</div></div>
+  <div id="tabManual">
+    <div class="field"><label>Persona Name</label><input id="pm_name" placeholder="e.g., Digital-First Millennial"/></div>
+    <div class="field"><label>Segment Tag</label><input id="pm_tag" placeholder="e.g., High Value Urban"/></div>
+    <div class="row"><div class="field"><label>Age Range</label><input id="pm_age" placeholder="28-35"/></div><div class="field"><label>Income</label><input id="pm_income" placeholder="$80K-$120K"/></div></div>
+    <div class="row"><div class="field"><label>Location</label><input id="pm_location" placeholder="Urban metro"/></div><div class="field"><label>Family</label><input id="pm_family" placeholder="Single, Married+kids"/></div></div>
+    <div class="field"><label>Behavioral Data</label><textarea id="pm_behavior" placeholder="Product usage, transactions, channel preferences..."></textarea></div>
+    <div class="field"><label>Channel Preferences</label><input id="pm_channels" placeholder="Mobile-first, email, social..."/></div>
+    <div class="field"><label>Attitudinal / NPS Data</label><textarea id="pm_attitude" placeholder="NPS scores, survey insights, satisfaction drivers..."></textarea></div>
+    <div class="field"><label>CRM Tags</label><textarea id="pm_crm" placeholder="Segment tags, notes, engagement history..."></textarea></div>
+    <button class="gen-btn" id="genManualBtn" onclick="generateManual()">Generate Persona</button>
+  </div>
+  <div id="tabData" class="hid">
+    <div class="field"><label>Paste Your Segment Data</label><textarea id="pd_data" style="min-height:160px;font-family:'JetBrains Mono',monospace;font-size:11px" placeholder="Paste CSV, segment export, or structured data..."></textarea></div>
+    <div class="field"><label>Additional Context (optional)</label><textarea id="pd_context" placeholder="e.g., We are launching a premium loyalty card..."></textarea></div>
+    <button class="gen-btn" id="genDataBtn" onclick="generateFromData()">Generate Personas from Data</button>
+  </div>
+  <div id="previewArea"></div>
+  <div id="genStatus" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
+</div>
+</div>
+
+<!-- HOW IT WORKS PAGES (reuse from previous version — hidden by default) -->
+<div id="hiwPersona" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:600;overflow-y:auto">
+<div style="max-width:760px;margin:0 auto;padding:32px 24px">
+  <button onclick="document.getElementById('hiwPersona').style.display='none'" style="background:none;border:none;color:var(--accent2);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:24px;font-family:inherit">&#8592; Back to App</button>
+  <h1 style="font-size:28px;font-weight:800;margin-bottom:8px">How Foresight Studio Builds Personas from CDP Data</h1>
+  <p style="color:var(--text2);line-height:1.7;margin-bottom:28px">Foresight Studio transforms raw AEP segment exports into psychologically rich synthetic personas. Here is exactly what happens under the hood.</p>
+  <div class="glass-card"><h3 style="color:var(--accent2)">The Translation Pipeline</h3><p style="color:var(--text2);font-size:13px;line-height:1.7;margin-top:8px">Your CSV contains 35+ columns of aggregate segment data — demographics, behavioral metrics, satisfaction scores, campaign response rates, and CRM tags. Foresight Studio does not simply list this data back. It interprets correlations between data points to generate psychological insights. For example: a 28% email open rate + 58% OTA booking rate + 0.62 churn probability tells the engine this persona is price-driven, brand-agnostic, and only responds to specific dollar-off messaging — not percentage discounts.</p></div>
+  <div class="glass-card"><h3 style="color:var(--accent2)">Data Sources from AEP</h3><p style="color:var(--text2);font-size:13px;line-height:1.7;margin-top:8px"><strong>Segmentation Service</strong> defines which groups to build personas for. <strong>Profile Access API</strong> provides identity, loyalty, and preference attributes (aggregated per segment). <strong>Query Service</strong> computes behavioral metrics from Experience Events — email engagement, booking patterns, app sessions, campaign response. All three combine into one CSV row per segment.</p></div>
+  <div class="glass-card"><h3 style="color:var(--accent2)">Cloud Storage Integration</h3><p style="color:var(--text2);font-size:13px;line-height:1.7;margin-top:8px">AEP Destinations can export to S3, Azure Blob, or GCS on a schedule. Query Service runs daily aggregation, writes to a derived dataset, and that dataset auto-exports to cloud storage. Foresight Studio can fetch directly from your bucket via pre-signed URL — no manual copy-paste needed.</p></div>
+</div></div>
+
+<div id="hiwAgent" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:600;overflow-y:auto">
+<div style="max-width:760px;margin:0 auto;padding:32px 24px">
+  <button onclick="document.getElementById('hiwAgent').style.display='none'" style="background:none;border:none;color:var(--accent2);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:24px;font-family:inherit">&#8592; Back to App</button>
+  <h1 style="font-size:28px;font-weight:800;margin-bottom:8px">How the Research Agent Works</h1>
+  <p style="color:var(--text2);line-height:1.7;margin-bottom:28px">Foresight Studio's Research Agent receives the full experiment context — all persona profiles, scores, reasoning, and creative details — with every question. It traces causal chains across four layers of evidence to deliver specific, actionable insights.</p>
+  <div class="glass-card"><h3 style="color:var(--accent2)">Four-Layer Evidence Chain</h3><p style="color:var(--text2);font-size:13px;line-height:1.7;margin-top:8px">When you ask "Why did Near-Retirees score low on Trust?", the agent cross-references: <strong>(1)</strong> The persona profile — "distrusts flashy marketing, wants credentials". <strong>(2)</strong> The Trust score — 3/10. <strong>(3)</strong> The evaluation reasoning — "no specific numbers, feels evasive". <strong>(4)</strong> Your actual creative copy — what triggered that reaction. It then synthesizes a specific recommendation grounded in all four layers.</p></div>
+  <div class="glass-card"><h3 style="color:var(--accent2)">Conversation Memory</h3><p style="color:var(--text2);font-size:13px;line-height:1.7;margin-top:8px">The agent maintains full chat history within a session. You can explore a creative direction across multiple turns: "Rewrite the headline" → "Now adapt it for another segment" → "Make it more urgent" — each turn builds on previous context.</p></div>
+  <div class="glass-card"><h3 style="color:var(--accent2)">Smart Suggestions</h3><p style="color:var(--text2);font-size:13px;line-height:1.7;margin-top:8px">Suggestion buttons are computed from your actual results — they identify the lowest-scoring persona, weakest dimension, and strongest performer, generating targeted questions that address the biggest opportunities first.</p></div>
+</div></div>
+
+<script>
+var PRESETS=[
+  {id:"yp",name:"Young Professional",segment:"Ages 25-34, Urban, $60K-$100K",profile:"You are a 29-year-old marketing manager in a metro city earning $80K/year. You have student loans, a small emergency fund, and just started thinking about investing. You use mobile banking daily, follow finance influencers, and are skeptical of traditional bank marketing. You respond to authentic, transparent, tech-forward brands. Your biggest anxiety is falling behind peers on wealth building.",preset:true},
+  {id:"af",name:"Affluent Family",segment:"Ages 38-50, Suburban, $150K-$300K",profile:"You are a 44-year-old dual-income suburban household. Combined income around 220K with a mortgage, two kids aged 8 and 12, and 529 plans. You care deeply about college funding, retirement, and protecting what you have built. You are time-poor and decision-fatigued. You respond to competence, specificity, and proof.",preset:true},
+  {id:"nr",name:"Near-Retiree",segment:"Ages 55-65, Mixed, $100K-$250K",profile:"You are a 59-year-old professional planning to retire in 5-7 years. You have substantial savings but constant anxiety about whether it is enough. You are shifting from growth to preservation. You distrust flashy marketing and prefer substance over style. You want specifics, credentials, and evidence.",preset:true},
+  {id:"sb",name:"Small Business Owner",segment:"Ages 30-55, Revenue $500K-$5M",profile:"You are a 41-year-old owner of a services business with 15 employees and around 2M revenue. Cash flow management is your constant headache. You want a financial partner who understands seasonal revenue. You are pragmatic, time-starved, and deeply skeptical of marketing promises.",preset:true}
+];
+var FIELDS={"digital-ad":{label:"Digital Ad",items:[{k:"headline",l:"Headline",p:"Your attention-grabbing headline"},{k:"body",l:"Body Copy",p:"Supporting message",t:"area"},{k:"cta",l:"CTA",p:"e.g., Start Saving Smarter"},{k:"visual",l:"Visual Description",p:"Describe the visual concept",t:"area"}]},"email":{label:"Email Campaign",items:[{k:"subject",l:"Subject Line",p:"The subject line"},{k:"preview",l:"Preview Text",p:"Inbox preview"},{k:"body",l:"Email Body",p:"Full body copy",t:"area"},{k:"cta",l:"Primary CTA",p:"e.g., Review Your Plan"}]},"landing":{label:"Landing Page",items:[{k:"hero",l:"Hero Headline",p:"Main headline + subhead",t:"area"},{k:"props",l:"Value Props",p:"Key benefits",t:"area"},{k:"trust",l:"Trust Signals",p:"Social proof, stats",t:"area"},{k:"cta",l:"Primary CTA",p:"e.g., Open Account"}]}};
+var DIMS=["Relevance","Emotional Resonance","Clarity","Trust","Action Likelihood"];
+function esc(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function loadCustom(){try{return JSON.parse(localStorage.getItem("fs_personas")||"[]")}catch(e){return[]}}
+function saveCustom(a){localStorage.setItem("fs_personas",JSON.stringify(a))}
+function getAll(){return PRESETS.concat(loadCustom())}
+var S={type:"digital-ad",mode:"single",crA:{},crB:{},sel:["yp","af","nr","sb"],conn:false,resA:[],resB:[],chatHistory:[],cancelled:false};
+
+var _AK="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";
+function gk(){return _AK}
+
+// INIT
+renderTypes();renderFields();renderPersonas();autoConnect();
+
+async function autoConnect(){
+  document.getElementById("navStatus").textContent="Connecting...";
+  try{await apiCall("Reply: ok",20);S.conn=true;document.getElementById("navDot").classList.add("on");document.getElementById("navStatus").textContent="AI Engine Ready"}
+  catch(e){document.getElementById("navStatus").textContent="Connection failed — retrying...";setTimeout(autoConnect,3000)}
+  updateRunBtn();renderSteps();updateHistBtn();
+}
+
+async function apiCall(prompt,mx){
+  var ctrl=new AbortController();var tm=setTimeout(function(){ctrl.abort()},90000);
+  try{var r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":gk(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:mx||1000,messages:[{role:"user",content:prompt}]}),signal:ctrl.signal});clearTimeout(tm);if(!r.ok){var e=await r.text();throw new Error("HTTP "+r.status)}var d=await r.json();return d.content.map(function(b){return b.text||""}).join("")}
+  catch(e){clearTimeout(tm);if(e.name==="AbortError")throw new Error("Request timed out (90s)");throw e}
+}
+
+function setMode(m,el){S.mode=m;el.parentElement.querySelectorAll(".mode-opt").forEach(function(o){o.classList.remove("on")});el.classList.add("on");renderFields();updateRunBtn()}
+
+function renderTypes(){
+  var h="";Object.keys(FIELDS).forEach(function(k){h+='<div class="chip'+(S.type===k?" on":"")+'" onclick="setTyp(\''+k+'\')">'+FIELDS[k].label+'</div>'});
+  document.getElementById("typeChips").innerHTML=h;
+}
+function setTyp(k){S.type=k;S.crA={};S.crB={};renderTypes();renderFields();updateRunBtn()}
+
+function renderFields(){
+  var f=FIELDS[S.type];
+  if(S.mode==="single"){
+    var h="";f.items.forEach(function(item){h+='<div class="field"><label>'+item.l+'</label>'+(item.t==="area"?'<textarea id="fA_'+item.k+'" placeholder="'+item.p+'" oninput="uc(\'A\',\''+item.k+'\',this.value)">'+(S.crA[item.k]||"")+'</textarea>':'<input id="fA_'+item.k+'" placeholder="'+item.p+'" value="'+(S.crA[item.k]||"")+'" oninput="uc(\'A\',\''+item.k+'\',this.value)"/>')+'</div>'});
+    document.getElementById("fieldsArea").innerHTML=h;
+    document.getElementById("creativeDesc").textContent="Paste the creative you want to test against your personas.";
+  } else {
+    var h='<div class="ab-grid">';
+    ["A","B"].forEach(function(v){var cls=v==="A"?"col-a":"col-b";var tag=v==="A"?"tag-a":"tag-b";var cr=v==="A"?S.crA:S.crB;
+      h+='<div class="ab-col '+cls+'"><div class="ab-tag '+tag+'">VARIANT '+v+'</div>';
+      f.items.forEach(function(item){h+='<div class="field"><label>'+item.l+'</label>'+(item.t==="area"?'<textarea id="f'+v+'_'+item.k+'" placeholder="'+item.p+'" oninput="uc(\''+v+'\',\''+item.k+'\',this.value)">'+(cr[item.k]||"")+'</textarea>':'<input id="f'+v+'_'+item.k+'" placeholder="'+item.p+'" value="'+(cr[item.k]||"")+'" oninput="uc(\''+v+'\',\''+item.k+'\',this.value)"/>')+'</div>'});
+      h+='</div>'});h+='</div>';
+    document.getElementById("fieldsArea").innerHTML=h;
+    document.getElementById("creativeDesc").textContent="Enter both variants to compare side-by-side.";
+  }
+}
+function uc(v,k,val){if(v==="A")S.crA[k]=val;else S.crB[k]=val;updateRunBtn();renderSteps()}
+
+function renderPersonas(){
+  var all=getAll();var h="";
+  all.forEach(function(p){var on=S.sel.indexOf(p.id)!==-1;h+='<div class="p-card'+(on?" on":"")+'" onclick="tp(\''+p.id+'\')">';if(!p.preset)h+='<span class="p-badge">CUSTOM</span>';h+='<div class="p-name">'+esc(p.name)+'</div><div class="p-seg">'+esc(p.segment)+'</div>';if(!p.preset)h+='<button onclick="event.stopPropagation();delPersona(\''+p.id+'\')" style="position:absolute;bottom:8px;right:8px;font-size:10px;color:var(--red);background:rgba(239,68,68,0.1);border:none;border-radius:4px;padding:2px 8px;cursor:pointer;opacity:0.6">delete</button>';h+='</div>'});
+  h+='<div class="p-card p-add" onclick="openModal()">+ Create Custom Persona</div>';
+  document.getElementById("pGrid").innerHTML=h;
+}
+function delPersona(id){if(!confirm("Delete this custom persona?"))return;var c=loadCustom().filter(function(p){return p.id!==id});saveCustom(c);S.sel=S.sel.filter(function(x){return x!==id});renderPersonas();updateRunBtn()}
+function tp(id){var i=S.sel.indexOf(id);if(i===-1)S.sel.push(id);else S.sel.splice(i,1);renderPersonas();updateRunBtn();renderSteps()}
+
+function renderSteps(){
+  var f=FIELDS[S.type];var hasA=f.items.some(function(i){return S.crA[i.k]&&S.crA[i.k].trim()});
+  var hasB=S.mode==="ab"?f.items.some(function(i){return S.crB[i.k]&&S.crB[i.k].trim()}):true;
+  var creativeDone=S.mode==="ab"?(hasA&&hasB):hasA;
+  var steps=[{n:"1",l:"Format",done:true,active:false},{n:"2",l:"Creative",done:creativeDone,active:!creativeDone},{n:"3",l:"Personas",done:S.sel.length>0,active:creativeDone&&S.sel.length===0},{n:"4",l:"Launch",done:false,active:S.conn&&creativeDone&&S.sel.length>0}];
+  var h="";steps.forEach(function(s){h+='<div class="step'+(s.done?" done":"")+(s.active?" active":"")+'"><div class="step-dot">'+(s.done?"&#10003;":s.n)+'</div><div class="step-label">'+s.l+'</div></div>'});
+  document.getElementById("stepsBar").innerHTML=h;
+}
+
+function cancelRun(){S.cancelled=true;document.getElementById("cancelBtn").textContent="Cancelling...";document.getElementById("cancelBtn").disabled=true}
+
+function updateRunBtn(){
+  var f=FIELDS[S.type];var hasA=f.items.some(function(i){return S.crA[i.k]&&S.crA[i.k].trim()});
+  var hasB=S.mode==="ab"?f.items.some(function(i){return S.crB[i.k]&&S.crB[i.k].trim()}):true;
+  var b=document.getElementById("runBtn");b.disabled=!(S.conn&&S.sel.length>0&&hasA&&hasB);
+  if(!S.conn)b.textContent="AI Engine connecting...";
+  else if(!hasA)b.textContent="Enter your creative above";
+  else if(S.mode==="ab"&&!hasB)b.textContent="Enter Variant B";
+  else b.textContent=(S.mode==="ab"?"Launch A/B Comparison":"Launch Experiment")+" \u2014 "+S.sel.length+" persona"+(S.sel.length>1?"s":"");
+  renderSteps();
+}
+
+// MODAL
+function openModal(){document.getElementById("personaModal").classList.remove("hid");document.getElementById("previewArea").innerHTML="";document.getElementById("genStatus").textContent="";["pm_name","pm_tag","pm_age","pm_income","pm_location","pm_family","pm_behavior","pm_channels","pm_attitude","pm_crm","pd_data","pd_context"].forEach(function(id){var el=document.getElementById(id);if(el)el.value=""});setTab("manual")}
+function closeModal(){document.getElementById("personaModal").classList.add("hid")}
+document.addEventListener("keydown",function(e){if(e.key==="Escape"){closeModal();document.getElementById("hiwPersona").style.display="none";document.getElementById("hiwAgent").style.display="none"}})
+function setTab(t,el){
+  var tabs=document.querySelectorAll(".tab-item");tabs[0].classList.toggle("on",t==="manual");tabs[1].classList.toggle("on",t==="data");
+  document.getElementById("tabManual").classList.toggle("hid",t!=="manual");document.getElementById("tabData").classList.toggle("hid",t!=="data");
+  document.getElementById("previewArea").innerHTML="";document.getElementById("genStatus").textContent="";
+}
+
+async function generateManual(){
+  var name=document.getElementById("pm_name").value.trim();if(!name){alert("Enter a persona name.");return}if(!S.conn){alert("AI Engine is still connecting. Please wait a moment.");return}
+  var parts=["pm_tag","pm_age","pm_income","pm_location","pm_family","pm_behavior","pm_channels","pm_attitude","pm_crm"];
+  var labels=["Segment Tag","Age","Income","Location","Family","Behavior","Channels","Attitudes","CRM Tags"];
+  var prompt="You are an expert at building synthetic consumer personas for creative testing.\n\nCreate a richly detailed persona profile in second person. 4-6 sentences covering: identity, finances, emotions, media behavior, trust triggers, and marketing turn-offs.\n\nDATA:\n";
+  parts.forEach(function(id,i){var v=document.getElementById(id).value.trim();if(v)prompt+=labels[i]+": "+v+"\n"});
+  prompt+='\nRespond ONLY with JSON:\n{"name":"'+name+'","segment":"<6-8 word description>","profile":"<full profile in second person>"}';
+  document.getElementById("genManualBtn").disabled=true;document.getElementById("genStatus").textContent="Generating persona...";
+  try{var txt=await apiCall(prompt,800);var c=txt.replace(/```json/g,"").replace(/```/g,"").trim();var m=c.match(/\{[\s\S]*\}/);showPreview([JSON.parse(m?m[0]:c)])}catch(e){document.getElementById("genStatus").innerHTML='<span style="color:var(--red)">Error: '+esc(e.message)+'</span>'}
+  document.getElementById("genManualBtn").disabled=false;
+}
+async function generateFromData(){
+  var data=document.getElementById("pd_data").value.trim();if(!data){alert("Paste data first.");return}if(!S.conn){alert("AI Engine is still connecting. Please wait a moment.");return}
+  var ctx=document.getElementById("pd_context").value.trim();
+  var prompt="You are an expert at building synthetic consumer personas.\n\nAnalyze this data and generate detailed personas in second person. 4-6 sentences each.\n\nDATA:\n"+data+"\n";
+  if(ctx)prompt+="\nCONTEXT: "+ctx+"\n";
+  prompt+='\nRespond ONLY with a JSON array:\n[{"name":"...","segment":"...","profile":"..."}]\nMax 6 personas.';
+  document.getElementById("genDataBtn").disabled=true;document.getElementById("genStatus").textContent="Analyzing segment data...";
+  try{var txt=await apiCall(prompt,2000);var c=txt.replace(/```json/g,"").replace(/```/g,"").trim();var m=c.match(/\[[\s\S]*\]/);var p=JSON.parse(m?m[0]:c);if(!Array.isArray(p))p=[p];showPreview(p)}catch(e){document.getElementById("genStatus").innerHTML='<span style="color:var(--red)">Error: '+esc(e.message)+'</span>'}
+  document.getElementById("genDataBtn").disabled=false;
+}
+function showPreview(personas){
+  var h="";personas.forEach(function(p,i){h+='<div class="preview-card"><h4>'+esc(p.name)+'</h4><div class="pv-seg">'+esc(p.segment)+'</div><div class="pv-profile">'+esc(p.profile)+'</div><button class="save-btn" onclick="savePersona('+i+')">Save & Add to Testing</button></div>'});
+  document.getElementById("previewArea").innerHTML=h;document.getElementById("genStatus").textContent="Review and save:";
+  window._pp=personas;
+}
+function savePersona(i){var p=window._pp[i];var id="c_"+Date.now()+"_"+i;var c=loadCustom();c.push({id:id,name:p.name,segment:p.segment,profile:p.profile,preset:false});saveCustom(c);S.sel.push(id);renderPersonas();updateRunBtn();var btns=document.getElementById("previewArea").querySelectorAll(".save-btn");btns[i].textContent="Saved!";btns[i].style.background="var(--text3)";btns[i].disabled=true}
+
+// EXPERIMENT
+function bp(persona,creative){var f=FIELDS[S.type];var block="";f.items.forEach(function(item){if(creative[item.k])block+=item.l+": "+creative[item.k]+"\n"});return "You are a synthetic consumer persona for creative testing in financial services and travel marketing. Stay fully in character. Never mention that you are an AI.\n\nPERSONA:\n"+persona.profile+"\n\nEvaluate this "+f.label.toLowerCase()+":\n"+block+'\nRespond ONLY with JSON:\n{"scores":{"Relevance":<1-10>,"Emotional Resonance":<1-10>,"Clarity":<1-10>,"Trust":<1-10>,"Action Likelihood":<1-10>},"overall":<1-10>,"first_reaction":"<1 sentence>","reasoning":{"what_works":"<1-2 sentences>","what_doesnt":"<1-2 sentences>","missing":"<1 sentence>"},"would_you_act":"<yes/no/maybe + reason>","rewrite_suggestion":"<one line>"}'}
+
+async function callEval(prompt){var t=await apiCall(prompt,1000);var c=t.replace(/```json/g,"").replace(/```/g,"").trim();var m=c.match(/\{[\s\S]*\}/);return JSON.parse(m?m[0]:c)}
+
+function procLog(msg,type){
+  var log=document.getElementById("procLog");
+  var cls=type==="ok"?"ok":type==="err"?"err":"";
+  var dot=type==="ok"?"dot-ok":type==="err"?"dot-err":"dot-info";
+  log.innerHTML+='<div class="proc-log-line '+cls+'"><div class="dot '+dot+'"></div><span class="log-time">'+new Date().toLocaleTimeString()+'</span><span class="log-msg">'+esc(msg)+'</span></div>';
+  log.scrollTop=log.scrollHeight;
+}
+function procUpdate(pct,title,persona){
+  var circ=339.292;document.getElementById("ringFill").style.strokeDashoffset=circ-(circ*pct/100);
+  document.getElementById("procPct").textContent=Math.round(pct)+"%";
+  if(title)document.getElementById("procTitle").textContent=title;
+  if(persona)document.getElementById("procPersona").textContent=persona;
+}
+
+async function run(){
+  var all=getAll();var personas=all.filter(function(p){return S.sel.indexOf(p.id)!==-1});
+  S.resA=[];S.resB=[];S.chatHistory=[];S.cancelled=false;
+  document.getElementById("procOverlay").classList.remove("hid");
+  document.getElementById("procLog").innerHTML="";
+  document.getElementById("cancelBtn").textContent="Cancel Experiment";document.getElementById("cancelBtn").disabled=false;
+  procUpdate(0,"Initializing","Preparing "+personas.length+" personas...");
+  procLog("Launching creative analysis","info");
+  var total=S.mode==="ab"?personas.length*2:personas.length;var done=0;
+
+  for(var i=0;i<personas.length;i++){
+    if(S.cancelled){procLog("Experiment cancelled by user","err");break}
+    var p=personas[i];
+    if(S.mode==="single"){
+      procUpdate((done/total)*100,"Evaluating Creative",p.name+" ("+p.segment+")");
+      procLog("Analyzing: "+p.name,"info");
+      try{var r=await callEval(bp(p,S.crA));procLog(p.name+": "+r.overall+"/10","ok");S.resA.push({p:p,r:r})}
+      catch(e){procLog("Error ("+p.name+"): "+e.message,"err");S.resA.push({p:p,r:{scores:{},overall:0,first_reaction:"Error: "+e.message,reasoning:{},would_you_act:"N/A",rewrite_suggestion:"N/A"}})}
+      done++;
+    } else {
+      if(S.cancelled){procLog("Experiment cancelled","err");break}
+      procUpdate((done/total)*100,"Testing Variant A",p.name);
+      procLog("[A] "+p.name+"...","info");
+      try{var ra=await callEval(bp(p,S.crA));procLog("[A] "+p.name+": "+ra.overall+"/10","ok");S.resA.push({p:p,r:ra})}
+      catch(e){procLog("[A] Error: "+e.message,"err");S.resA.push({p:p,r:{scores:{},overall:0,first_reaction:"Error",reasoning:{},would_you_act:"N/A",rewrite_suggestion:"N/A"}})}
+      done++;
+      if(S.cancelled){procLog("Experiment cancelled","err");break}
+      procUpdate((done/total)*100,"Testing Variant B",p.name);
+      procLog("[B] "+p.name+"...","info");
+      try{var rb=await callEval(bp(p,S.crB));procLog("[B] "+p.name+": "+rb.overall+"/10","ok");S.resB.push({p:p,r:rb})}
+      catch(e){procLog("[B] Error: "+e.message,"err");S.resB.push({p:p,r:{scores:{},overall:0,first_reaction:"Error",reasoning:{},would_you_act:"N/A",rewrite_suggestion:"N/A"}})}
+      done++;
+    }
+  }
+
+  if(S.cancelled){
+    procUpdate(done/total*100,"Cancelled","Showing partial results...");
+    procLog("Showing "+S.resA.length+" completed results","info");
+  } else {
+    procLog("Experiment complete!","ok");
+    procUpdate(100,"Complete!","Loading results...");
+  }
+  setTimeout(function(){document.getElementById("procOverlay").classList.add("hid");var validCount=S.resA.filter(function(x){return x.r.overall>0}).length;if(validCount>0){saveExperiment();showResults()}else if(S.resA.length>0){showResults()}else{resetApp()}},800);
+}
+
+function sc(v){return v>=7?"var(--green)":v>=5?"var(--yellow)":v>0?"var(--red)":"var(--text3)"}
+function bc(v){return v>=7?"#22c55e":v>=5?"#f59e0b":"#ef4444"}
+function sbg(v){return v>=7?"rgba(34,197,94,0.15)":v>=5?"rgba(245,158,11,0.12)":v>0?"rgba(239,68,68,0.12)":"var(--surface)"}
+
+function renderCard(x){
+  var r=x.r;var re=r.reasoning||{};var scores="";
+  DIMS.forEach(function(d){var v=(r.scores&&r.scores[d])||0;scores+='<div class="score-row"><div class="score-label">'+d+'</div><div class="score-track"><div class="score-fill" style="width:'+(v*10)+'%;background:'+bc(v)+'"></div></div><div class="score-val" style="color:'+bc(v)+'">'+v+'</div></div>'});
+  return '<div class="res-card"><div class="res-card-header" onclick="this.nextElementSibling.classList.toggle(\'hid\')"><div><strong>'+esc(x.p.name)+'</strong> <span style="color:var(--text3);font-size:12px;margin-left:8px">'+esc(x.p.segment)+'</span></div><div style="font-size:22px;font-weight:800;color:'+sc(r.overall)+'">'+r.overall+'/10</div></div><div class="res-card-body"><div style="background:var(--surface2);padding:12px 16px;border-radius:10px;border-left:3px solid var(--accent);margin-bottom:16px"><div style="font-size:10px;font-weight:700;color:var(--accent2);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">First Reaction</div><div style="font-size:13px;font-style:italic;color:var(--text2)">'+esc(r.first_reaction)+'</div></div>'+scores+'<div class="insight-grid"><div class="insight-box ins-green"><div class="ins-label">What Works</div><div class="ins-text">'+esc(re.what_works)+'</div></div><div class="insight-box ins-red"><div class="ins-label">What Doesn\'t</div><div class="ins-text">'+esc(re.what_doesnt)+'</div></div></div><div class="insight-box ins-yellow mt-sm" style="width:100%"><div class="ins-label">What\'s Missing</div><div class="ins-text">'+esc(re.missing)+'</div></div><div style="display:flex;gap:10px;margin-top:10px"><div class="insight-box ins-purple" style="flex:1"><div class="ins-label">Would Act?</div><div class="ins-text">'+esc(r.would_you_act)+'</div></div><div class="insight-box" style="flex:2;background:var(--surface2);border-color:var(--border)"><div class="ins-label" style="color:var(--text3)">Suggested Rewrite</div><div class="ins-text" style="font-style:italic">'+esc(r.rewrite_suggestion)+'</div></div></div></div></div>';
+}
+
+function getSuggestions(){
+  var sug=[];if(S.resA.length===0)return sug;
+  var low=S.resA.reduce(function(m,x){return x.r.overall<m.r.overall?x:m},S.resA[0]);
+  var high=S.resA.reduce(function(m,x){return x.r.overall>m.r.overall?x:m},S.resA[0]);
+  sug.push("Why did "+low.p.name+" score so low?");sug.push("Rewrite the headline for "+low.p.name);
+  if(high.p.id!==low.p.id)sug.push("What made "+high.p.name+" respond well?");
+  var da={};DIMS.forEach(function(d){var s=0;S.resA.forEach(function(x){s+=((x.r.scores&&x.r.scores[d])||0)});da[d]=s/S.resA.length});
+  var wd=DIMS.reduce(function(w,d){return da[d]<da[w]?d:w},DIMS[0]);
+  sug.push("How can I improve "+wd+"?");
+  if(S.mode==="ab"){sug.push("Create a Variant C combining the best of A and B");sug.push("Which segments should get which variant?")}
+  else sug.push("What one change would have the biggest impact?");
+  return sug;
+}
+
+function renderAgent(){
+  var h='<div class="agent-panel"><div class="agent-head"><h3><span class="agent-dot"></span> Research Agent <button class="hiw-link" style="color:var(--text3);margin-left:8px" onclick="event.stopPropagation();document.getElementById(\'hiwAgent\').style.display=\'block\';window.scrollTo(0,0)">How this works &rarr;</button></h3></div><div class="chat-area" id="chatArea"><div class="chat-msg agent"><div class="chat-icon">R</div><div class="chat-bubble">I have analyzed your results. Ask me anything — why a segment scored low, how to rewrite copy, or what patterns I see.</div></div></div><div class="chat-sugs" id="chatSugs">';
+  getSuggestions().forEach(function(s){h+='<button class="chat-sug" onclick="askAgent(this.textContent)">'+esc(s)+'</button>'});
+  h+='</div><div class="chat-input-bar"><input id="chatInput" placeholder="Ask about your results..." onkeydown="if(event.key===\'Enter\')sendChat()"/><button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">Send</button></div></div>';
+  return h;
+}
+
+function showResults(){
+  document.getElementById("setupView").classList.add("hid");document.getElementById("resView").classList.remove("hid");document.getElementById("histView").classList.add("hid");
+  document.getElementById("resView").innerHTML="";
+  var backBtn='<button class="btn btn-ghost btn-sm" onclick="resetApp()" style="margin-bottom:20px">&#8592; New Experiment</button>';
+  if(S.mode==="single")showSingle(backBtn);else showAB(backBtn);
+  updateHistBtn();
+}
+
+function showSingle(backBtn){
+  var valid=S.resA.filter(function(x){return x.r.overall>0});
+  var avg=valid.length>0?(valid.reduce(function(s,x){return s+x.r.overall},0)/valid.length).toFixed(1):"-";
+  var h=backBtn;
+  h+='<div class="res-hero"><div><div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase">Experiment Complete</div><div style="font-size:16px;margin-top:4px">'+FIELDS[S.type].label+' tested against '+S.resA.length+' personas</div></div><div style="text-align:right"><div style="font-size:11px;color:var(--text3)">AVG SCORE</div><div class="res-avg" style="color:'+sc(avg)+'">'+avg+'</div></div></div>';
+  h+='<div class="glass-card"><div class="sec-label">Resonance Heatmap <span class="sec-line"></span></div><table class="heat-table"><thead><tr><th style="text-align:left">Persona</th>';
+  DIMS.forEach(function(d){h+='<th>'+d+'</th>'});h+='<th>Overall</th></tr></thead><tbody>';
+  S.resA.forEach(function(x){h+='<tr><td>'+esc(x.p.name)+'</td>';DIMS.forEach(function(d){var v=(x.r.scores&&x.r.scores[d])||0;h+='<td style="background:'+sbg(v)+';color:'+sc(v)+'">'+(v||"-")+'</td>'});h+='<td style="background:'+sbg(x.r.overall)+';color:'+sc(x.r.overall)+';font-size:16px;font-weight:800">'+(x.r.overall||"-")+'</td></tr>'});
+  h+='</tbody></table></div>';
+  h+='<div class="sec-label mt-lg">Detailed Evaluations <span class="sec-line"></span></div>';
+  S.resA.forEach(function(x){h+=renderCard(x)});
+  h+=renderAgent();
+  document.getElementById("resView").innerHTML=h;
+}
+
+function showAB(backBtn){
+  var vA=S.resA.filter(function(x){return x.r.overall>0});var vB=S.resB.filter(function(x){return x.r.overall>0});
+  var avgA=vA.length>0?(vA.reduce(function(s,x){return s+x.r.overall},0)/vA.length).toFixed(1):0;
+  var avgB=vB.length>0?(vB.reduce(function(s,x){return s+x.r.overall},0)/vB.length).toFixed(1):0;
+  var w=parseFloat(avgA)>parseFloat(avgB)?"A":parseFloat(avgB)>parseFloat(avgA)?"B":"TIE";
+  var h=backBtn;
+  h+='<div class="res-hero"><div><div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase">A/B Comparison Complete</div><div style="font-size:16px;margin-top:4px">'+FIELDS[S.type].label+' &mdash; '+S.resA.length+' personas &times; 2 variants</div></div><div style="text-align:right"><div style="font-size:11px;color:var(--text3)">WINNER</div><div style="font-size:28px;font-weight:800;color:'+(w==="A"?"var(--accent2)":w==="B"?"var(--yellow)":"var(--text3)")+'">Variant '+w+'</div></div></div>';
+  // Score boxes
+  h+='<div class="ab-hero"><div class="ab-score-box'+(w==="A"?" winner":"")+'"><div style="font-size:12px;font-weight:700;color:var(--accent2)">VARIANT A</div><div class="ab-score-val" style="color:'+sc(avgA)+'">'+avgA+'</div>'+(w==="A"?'<div class="winner-tag win-a">WINNER</div>':"")+'</div><div class="ab-vs">VS</div><div class="ab-score-box'+(w==="B"?" winner":"")+'"><div style="font-size:12px;font-weight:700;color:var(--yellow)">VARIANT B</div><div class="ab-score-val" style="color:'+sc(avgB)+'">'+avgB+'</div>'+(w==="B"?'<div class="winner-tag win-b">WINNER</div>':"")+'</div></div>';
+  // Dimension table
+  h+='<div class="glass-card"><div class="sec-label">Score by Dimension <span class="sec-line"></span></div><table class="heat-table"><thead><tr><th style="text-align:left">Dimension</th><th style="color:var(--accent2)">A</th><th style="color:var(--yellow)">B</th><th>Delta</th></tr></thead><tbody>';
+  DIMS.forEach(function(d){var sA=0,sB=0,c=0;for(var i=0;i<S.resA.length;i++){sA+=((S.resA[i].r.scores&&S.resA[i].r.scores[d])||0);sB+=((S.resB[i].r.scores&&S.resB[i].r.scores[d])||0);c++}var aA=c>0?(sA/c).toFixed(1):0;var aB=c>0?(sB/c).toFixed(1):0;var delta=(parseFloat(aA)-parseFloat(aB)).toFixed(1);h+='<tr><td>'+d+'</td><td style="color:'+sc(aA)+'">'+aA+'</td><td style="color:'+sc(aB)+'">'+aB+'</td><td style="color:'+(delta>0?"var(--green)":delta<0?"var(--red)":"var(--text3)")+'">'+(delta>0?"+":"")+delta+'</td></tr>'});
+  h+='</tbody></table></div>';
+  // Per persona
+  h+='<div class="sec-label mt-lg">Head-to-Head <span class="sec-line"></span></div>';
+  for(var i=0;i<S.resA.length;i++){
+    var p=S.resA[i].p;var rA=S.resA[i].r;var rB=S.resB[i].r;
+    var pw=rA.overall>rB.overall?"A":rB.overall>rA.overall?"B":"TIE";
+    h+='<div class="glass-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><strong>'+esc(p.name)+'</strong> <span style="color:var(--text3);font-size:12px">'+esc(p.segment)+'</span></div><span class="winner-tag '+(pw==="A"?"win-a":pw==="B"?"win-b":"win-tie")+'">'+pw+(pw!=="TIE"?" WINS":"")+'</span></div>';
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+    // A scores
+    h+='<div style="border:1px solid rgba(124,92,252,0.2);border-radius:10px;padding:14px"><div style="font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:8px">VARIANT A &mdash; '+rA.overall+'/10</div>';
+    DIMS.forEach(function(d){var v=(rA.scores&&rA.scores[d])||0;h+='<div class="score-row"><div class="score-label" style="width:100px;font-size:11px">'+d+'</div><div class="score-track"><div class="score-fill" style="width:'+(v*10)+'%;background:'+bc(v)+'"></div></div><div class="score-val" style="font-size:12px;color:'+bc(v)+'">'+v+'</div></div>'});
+    h+='<div style="margin-top:10px;font-size:12px;font-style:italic;color:var(--text3)">'+esc(rA.first_reaction)+'</div>';
+    if(rA.rewrite_suggestion)h+='<div style="margin-top:8px;padding:8px 10px;background:var(--surface);border-radius:6px;font-size:11px"><span style="color:var(--accent2);font-weight:700">Rewrite: </span><span style="color:var(--text2);font-style:italic">'+esc(rA.rewrite_suggestion)+'</span></div>';
+    h+='</div>';
+    // B scores
+    h+='<div style="border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:14px"><div style="font-size:11px;font-weight:700;color:var(--yellow);margin-bottom:8px">VARIANT B &mdash; '+rB.overall+'/10</div>';
+    DIMS.forEach(function(d){var v=(rB.scores&&rB.scores[d])||0;h+='<div class="score-row"><div class="score-label" style="width:100px;font-size:11px">'+d+'</div><div class="score-track"><div class="score-fill" style="width:'+(v*10)+'%;background:'+bc(v)+'"></div></div><div class="score-val" style="font-size:12px;color:'+bc(v)+'">'+v+'</div></div>'});
+    h+='<div style="margin-top:10px;font-size:12px;font-style:italic;color:var(--text3)">'+esc(rB.first_reaction)+'</div>';
+    if(rB.rewrite_suggestion)h+='<div style="margin-top:8px;padding:8px 10px;background:var(--surface);border-radius:6px;font-size:11px"><span style="color:var(--yellow);font-weight:700">Rewrite: </span><span style="color:var(--text2);font-style:italic">'+esc(rB.rewrite_suggestion)+'</span></div>';
+    h+='</div>';
+    h+='</div></div>';
+  }
+  h+=renderAgent();
+  document.getElementById("resView").innerHTML=h;
+}
+
+function resetApp(){document.getElementById("setupView").classList.remove("hid");document.getElementById("resView").classList.add("hid");document.getElementById("histView").classList.add("hid");S.resA=[];S.resB=[];S.chatHistory=[];updateRunBtn()}
+
+// ── EXPERIMENT HISTORY ──────────────────────────
+function loadHistory(){try{return JSON.parse(localStorage.getItem("fs_history")||"[]")}catch(e){return[]}}
+function saveHistory(arr){
+  try{localStorage.setItem("fs_history",JSON.stringify(arr))}
+  catch(e){
+    if(arr.length>5){arr=arr.slice(0,Math.floor(arr.length/2));try{localStorage.setItem("fs_history",JSON.stringify(arr))}catch(e2){}}
+  }
+}
+
+function saveExperiment(){
+  var valid=S.resA.filter(function(x){return x.r.overall>0});
+  if(valid.length===0)return; // Don't save if no valid results
+
+  var hist=loadHistory();
+  var avg=valid.length>0?(valid.reduce(function(s,x){return s+x.r.overall},0)/valid.length).toFixed(1):0;
+
+  var entry={
+    id:"exp_"+Date.now(),
+    date:new Date().toISOString(),
+    type:S.type,
+    typeLabel:FIELDS[S.type].label,
+    mode:S.mode,
+    creativeA:Object.assign({},S.crA),
+    creativeB:S.mode==="ab"?Object.assign({},S.crB):null,
+    personas:S.resA.map(function(x){return{name:x.p.name,segment:x.p.segment,profile:x.p.profile||""}}),
+    resultsA:S.resA.map(function(x){return{name:x.p.name,overall:x.r.overall,scores:x.r.scores||{},first_reaction:x.r.first_reaction,reasoning:x.r.reasoning||{},would_you_act:x.r.would_you_act,rewrite_suggestion:x.r.rewrite_suggestion}}),
+    resultsB:S.mode==="ab"?S.resB.map(function(x){return{name:x.p.name,overall:x.r.overall,scores:x.r.scores||{},first_reaction:x.r.first_reaction,reasoning:x.r.reasoning||{},would_you_act:x.r.would_you_act,rewrite_suggestion:x.r.rewrite_suggestion}}):null,
+    avgScore:parseFloat(avg),
+    personaCount:S.resA.length
+  };
+
+  // Add AB winner if applicable
+  if(S.mode==="ab"){
+    var vB=S.resB.filter(function(x){return x.r.overall>0});
+    var avgB=vB.length>0?(vB.reduce(function(s,x){return s+x.r.overall},0)/vB.length).toFixed(1):0;
+    entry.avgScoreB=parseFloat(avgB);
+    entry.winner=parseFloat(avg)>parseFloat(avgB)?"A":parseFloat(avgB)>parseFloat(avg)?"B":"TIE";
+  }
+
+  hist.unshift(entry);
+  // Keep max 50 experiments
+  if(hist.length>50)hist=hist.slice(0,50);
+  saveHistory(hist);
+  updateHistBtn();
+}
+
+function updateHistBtn(){
+  var hist=loadHistory();
+  var btn=document.getElementById("histBtn");
+  var count=document.getElementById("histCount");
+  if(hist.length>0){btn.style.display="inline-flex";count.textContent=hist.length}
+  else{btn.style.display="none"}
+}
+
+function deleteExperiment(id){
+  if(!confirm("Delete this experiment from history?"))return;
+  var hist=loadHistory().filter(function(e){return e.id!==id});
+  saveHistory(hist);
+  showHistory();updateHistBtn();
+}
+
+function clearAllHistory(){
+  if(!confirm("Delete all experiment history? This cannot be undone."))return;
+  saveHistory([]);showHistory();updateHistBtn();
+}
+
+function showHistory(){
+  document.getElementById("setupView").classList.add("hid");
+  document.getElementById("resView").classList.add("hid");
+  document.getElementById("histView").classList.remove("hid");
+
+  var hist=loadHistory();
+  var h='<button class="btn btn-ghost btn-sm" onclick="resetApp()" style="margin-bottom:20px">&#8592; Back to Experiments</button>';
+
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px"><h2 style="font-size:22px;font-weight:700">Experiment History</h2>';
+  if(hist.length>0)h+='<button class="btn btn-ghost btn-sm" onclick="clearAllHistory()" style="color:var(--red);border-color:rgba(239,68,68,0.3)">Clear All</button>';
+  h+='</div>';
+
+  if(hist.length===0){
+    h+='<div class="hist-empty"><div class="hist-empty-icon">&#128202;</div><p>No experiments yet.<br>Run your first experiment and it will appear here.</p></div>';
+    document.getElementById("histView").innerHTML=h;return;
+  }
+
+  // Stats — filter valid experiments
+  var totalExps=hist.length;
+  var validHist=hist.filter(function(e){return e.avgScore>0});
+  var avgAll=validHist.length>0?validHist.reduce(function(s,e){return s+e.avgScore},0)/validHist.length:0;
+  var bestExp=validHist.length>0?validHist.reduce(function(b,e){return e.avgScore>b.avgScore?e:b},validHist[0]):{avgScore:0};
+  var abCount=hist.filter(function(e){return e.mode==="ab"}).length;
+
+  h+='<div class="hist-stats">';
+  h+='<div class="hist-stat"><div class="stat-val" style="color:var(--accent2)">'+totalExps+'</div><div class="stat-label">Experiments</div></div>';
+  h+='<div class="hist-stat"><div class="stat-val" style="color:'+sc(avgAll)+'">'+avgAll.toFixed(1)+'</div><div class="stat-label">Avg Score</div></div>';
+  h+='<div class="hist-stat"><div class="stat-val" style="color:var(--green)">'+bestExp.avgScore.toFixed(1)+'</div><div class="stat-label">Best Score</div></div>';
+  h+='<div class="hist-stat"><div class="stat-val" style="color:var(--yellow)">'+abCount+'</div><div class="stat-label">A/B Tests</div></div>';
+  h+='</div>';
+
+  // Score trend (last 10) — only show if we have valid scores
+  var recent=hist.slice(0,10).reverse();
+  var recentValid=recent.filter(function(e){return e.avgScore>0});
+  if(recentValid.length>=2){
+    h+='<div class="glass-card" style="margin-bottom:20px"><div class="sec-label">Score Trend (Recent) <span class="sec-line"></span></div>';
+    h+='<div style="display:flex;align-items:flex-end;gap:6px;height:80px;padding:8px 0">';
+    recentValid.forEach(function(e){
+      var pct=(e.avgScore/10)*100;
+      var clr=e.avgScore>=7?"var(--green)":e.avgScore>=5?"var(--yellow)":"var(--red)";
+      h+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" title="'+new Date(e.date).toLocaleDateString()+' — '+e.avgScore+'/10">';
+      h+='<div style="font-size:10px;color:var(--text3)">'+e.avgScore+'</div>';
+      h+='<div style="width:100%;background:'+clr+';border-radius:4px 4px 0 0;height:'+pct+'%;min-height:4px;transition:height 0.3s;opacity:0.7"></div>';
+      h+='</div>';
+    });
+    h+='</div>';
+    var first=recentValid[0].avgScore;var last=recentValid[recentValid.length-1].avgScore;
+    var diff=(last-first).toFixed(1);
+    h+='<div class="hist-trend" style="margin-top:8px;justify-content:center">';
+    if(diff>0)h+='<span class="up">&#9650; +'+diff+' improvement over last '+recentValid.length+' experiments</span>';
+    else if(diff<0)h+='<span class="down">&#9660; '+diff+' decline over last '+recentValid.length+' experiments</span>';
+    else h+='<span class="flat">&#9654; Consistent over last '+recentValid.length+' experiments</span>';
+    h+='</div></div>';
+  }
+
+  // Experiment list
+  h+='<div class="sec-label">All Experiments <span class="sec-line"></span></div>';
+  hist.forEach(function(e){
+    var d=new Date(e.date);
+    var dateStr=d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})+" at "+d.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
+    var headline=e.creativeA.headline||e.creativeA.subject||e.creativeA.hero||"Untitled";
+    if(headline.length>60)headline=headline.substring(0,57)+"...";
+
+    h+='<div class="hist-card" onclick="viewExperiment(\''+e.id+'\')">';
+    h+='<div class="hist-date">'+dateStr+'</div>';
+    h+='<div class="hist-title">'+esc(headline)+'</div>';
+    h+='<div class="hist-score" style="color:'+sc(e.avgScore)+'">'+e.avgScore+'</div>';
+    h+='<div class="hist-meta">';
+    h+='<span>'+e.typeLabel+'</span>';
+    h+='<span>'+e.personaCount+' personas</span>';
+    if(e.mode==="ab")h+='<span style="color:var(--accent2)">A/B Test'+(e.winner?' — '+e.winner+' won':'')+'</span>';
+    h+='</div>';
+    h+='<div class="hist-badges">';
+    e.personas.forEach(function(p){h+='<span class="hist-badge">'+esc(p.name)+'</span>'});
+    h+='</div>';
+    h+='<button class="hist-del" onclick="event.stopPropagation();deleteExperiment(\''+e.id+'\')">delete</button>';
+    h+='</div>';
+  });
+
+  document.getElementById("histView").innerHTML=h;
+}
+
+function viewExperiment(id){
+  var hist=loadHistory();
+  var exp=hist.find(function(e){return e.id===id});
+  if(!exp)return;
+
+  document.getElementById("histView").classList.add("hid");
+  document.getElementById("resView").classList.remove("hid");
+
+  // Reconstruct S state from saved experiment — including profiles
+  S.type=exp.type;S.mode=exp.mode;S.crA=exp.creativeA;S.crB=exp.creativeB||{};
+  S.resA=exp.resultsA.map(function(r,i){
+    var persona=exp.personas[i]||{name:"Unknown",segment:"",profile:""};
+    return{p:{name:persona.name,segment:persona.segment,profile:persona.profile||""},r:r};
+  });
+  if(exp.resultsB){
+    S.resB=exp.resultsB.map(function(r,i){
+      var persona=exp.personas[i]||{name:"Unknown",segment:"",profile:""};
+      return{p:{name:persona.name,segment:persona.segment,profile:persona.profile||""},r:r};
+    });
+  } else{S.resB=[]}
+  S.chatHistory=[];
+
+  var backBtn='<button class="btn btn-ghost btn-sm" onclick="showHistory()" style="margin-bottom:20px">&#8592; Back to History</button>';
+  backBtn+='<div style="font-size:12px;color:var(--text3);margin-bottom:16px">Viewing saved experiment from '+new Date(exp.date).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"})+'</div>';
+
+  if(S.mode==="single")showSingle(backBtn);else showAB(backBtn);
+}
+
+updateHistBtn();
+
+// AGENT
+function buildAgentCtx(){
+  var c="You are a Research Agent for Foresight Studio, a creative testing platform used in marketing. You have access to full experiment results. Provide specific, actionable insights. Never mention your model name or provider.\n\nEXPERIMENT: "+FIELDS[S.type].label+" ("+S.mode+" mode).\n\nCREATIVE A:\n";
+  FIELDS[S.type].items.forEach(function(i){if(S.crA[i.k])c+=i.l+": "+S.crA[i.k]+"\n"});
+  if(S.mode==="ab"){c+="\nCREATIVE B:\n";FIELDS[S.type].items.forEach(function(i){if(S.crB[i.k])c+=i.l+": "+S.crB[i.k]+"\n"})}
+  c+="\nRESULTS:\n";
+  S.resA.forEach(function(x,i){var r=x.r;var re=r.reasoning||{};c+="\n--- "+x.p.name+" ("+x.p.segment+") ---\nProfile: "+x.p.profile+"\n";
+    if(S.mode==="ab")c+="[VARIANT A] ";c+="Overall:"+r.overall+"/10 | ";DIMS.forEach(function(d){c+=d+":"+(r.scores&&r.scores[d]||0)+" "});
+    c+="\nFirst Reaction: "+(r.first_reaction||"")+"\nWhat Works: "+(re.what_works||"")+"\nWhat Doesn't: "+(re.what_doesnt||"")+"\nMissing: "+(re.missing||"")+"\nWould Act: "+(r.would_you_act||"")+"\nRewrite: "+(r.rewrite_suggestion||"")+"\n";
+    if(S.mode==="ab"&&S.resB[i]){var rb=S.resB[i].r;var reb=rb.reasoning||{};
+      c+="\n[VARIANT B] Overall:"+rb.overall+"/10 | ";DIMS.forEach(function(d){c+=d+":"+(rb.scores&&rb.scores[d]||0)+" "});
+      c+="\nFirst Reaction: "+(rb.first_reaction||"")+"\nWhat Works: "+(reb.what_works||"")+"\nWhat Doesn't: "+(reb.what_doesnt||"")+"\nMissing: "+(reb.missing||"")+"\nWould Act: "+(rb.would_you_act||"")+"\nRewrite: "+(rb.rewrite_suggestion||"")+"\n"}});
+  c+="\n\nBe specific. Reference scores, personas, and copy. When rewriting, produce actual copy.";return c;
+}
+function askAgent(t){document.getElementById("chatInput").value=t;sendChat()}
+async function sendChat(){
+  var inp=document.getElementById("chatInput");var msg=inp.value.trim();if(!msg)return;inp.value="";
+  var ca=document.getElementById("chatArea");
+  ca.innerHTML+='<div class="chat-msg user"><div class="chat-bubble">'+esc(msg)+'</div></div>';
+  document.getElementById("chatSugs").style.display="none";
+  ca.innerHTML+='<div class="chat-msg agent" id="typingMsg"><div class="chat-icon">R</div><div class="chat-bubble"><span class="pulse" style="color:var(--text3)">Analyzing...</span></div></div>';
+  ca.scrollTop=ca.scrollHeight;document.getElementById("chatSendBtn").disabled=true;
+  var msgs=[{role:"user",content:buildAgentCtx()},{role:"assistant",content:"Ready to answer."}];
+  S.chatHistory.forEach(function(h){msgs.push({role:h.role,content:h.content})});
+  msgs.push({role:"user",content:msg});
+  try{
+    var ctrl=new AbortController();var tm=setTimeout(function(){ctrl.abort()},90000);
+    var r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":gk(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,messages:msgs}),signal:ctrl.signal});
+    clearTimeout(tm);
+    var d=await r.json();var txt=d.content.map(function(b){return b.text||""}).join("");
+    var el=document.getElementById("typingMsg");if(el)el.remove();
+    var fmt=esc(txt).replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p style="margin-top:8px">').replace(/\n/g,'<br>');
+    ca.innerHTML+='<div class="chat-msg agent"><div class="chat-icon">R</div><div class="chat-bubble"><p>'+fmt+'</p></div></div>';
+    S.chatHistory.push({role:"user",content:msg});S.chatHistory.push({role:"assistant",content:txt});
+  }catch(e){var el=document.getElementById("typingMsg");if(el)el.remove();ca.innerHTML+='<div class="chat-msg agent"><div class="chat-icon">R</div><div class="chat-bubble" style="color:var(--red)">Error: '+esc(e.message)+'</div></div>'}
+  document.getElementById("chatSendBtn").disabled=false;ca.scrollTop=ca.scrollHeight;
+}
+</script>
+</body>
+</html>
