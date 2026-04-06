@@ -502,7 +502,7 @@ function getKeyFromURL(){
 }
 
 // INIT
-_AK=getKeyFromURL();
+_AK="__FORESIGHT_KEY__"||getKeyFromURL();
 renderTypes();renderFields();renderPersonas();
 
 if(_AK){
