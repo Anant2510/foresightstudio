@@ -528,29 +528,60 @@ function launchApp(){
   document.getElementById("landingPage").classList.add("hid");
   document.getElementById("app").classList.remove("hid");
   window.scrollTo(0,0);
-  // Re-resolve key in case config.js loaded after initial resolveKey() call
+  // Re-resolve key in case config.js loaded asynchronously
   if(!_AK){_AK=resolveKey();}
-  if(!S.conn)autoConnect();
+  // If already connected from background init — just update nav and go
+  if(S.conn){
+    document.getElementById("navDot").classList.add("on");
+    document.getElementById("navStatus").textContent="AI Engine Ready";
+    updateRunBtn();renderSteps();updateHistBtn();
+  } else {
+    // Connect without ever showing key input card
+    autoConnectSilent();
+  }
 }
 
 // ── INIT ──
+// ALWAYS show landing page first — app only opens when user clicks Launch
+document.getElementById("landingPage").classList.remove("hid");
+document.getElementById("app").classList.add("hid");
+
 _AK=resolveKey();
 renderTypes();renderFields();renderPersonas();
 
-if(_AK){
-  // Key found — skip landing, go straight to app
-  document.getElementById("landingPage").classList.add("hid");
-  document.getElementById("app").classList.remove("hid");
-  autoConnect();
-} else {
-  // No key — show landing page
-  document.getElementById("landingPage").classList.remove("hid");
-  document.getElementById("app").classList.add("hid");
+// Silently test the connection in background — updates landing status dot
+// Does NOT navigate away from landing — just warms up the connection
+(async function initConnection(){
+  var ld=document.getElementById("landingDot");
+  var ls=document.getElementById("landingStatus");
   var lb=document.getElementById("launchBtn");
-  if(lb){lb.disabled=false;document.getElementById("launchText").textContent="Launch Studio →";}
-  var ld=document.getElementById("landingDot");if(ld){ld.style.background="#d97706";}
-  var ls=document.getElementById("landingStatus");if(ls){ls.textContent="API Key Required";}
-  updateRunBtn();renderSteps();function exportReport(){
+  var lt=document.getElementById("launchText");
+  if(!_AK){
+    if(ld)ld.style.background="#d97706";
+    if(ls)ls.textContent="API Key Required";
+    if(lb){lb.disabled=false;}
+    if(lt){lt.textContent="Launch Studio →";}
+    updateRunBtn();renderSteps();
+    return;
+  }
+  // Key found — test connection silently
+  if(ld)ld.style.background="#fbbf24";
+  if(ls)ls.textContent="Connecting...";
+  try{
+    await apiCall("Reply: ok",20);
+    S.conn=true;
+    if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)";}
+    if(ls)ls.textContent="AI Engine Ready";
+    if(lb){lb.disabled=false;}
+    if(lt){lt.textContent="Launch Studio →";}
+  } catch(e){
+    if(ld)ld.style.background="#dc2626";
+    if(ls)ls.textContent="Connection Failed";
+    if(lb){lb.disabled=false;}
+    if(lt){lt.textContent="Launch Studio →";}
+  }
+  updateRunBtn();renderSteps();
+})();function exportReport(){
   var f=FIELDS[S.type];
   var valid=S.resA.filter(function(x){return x.r.overall>0});
   var avg=valid.length>0?(valid.reduce(function(s,x){return s+x.r.overall},0)/valid.length).toFixed(1):"-";
@@ -723,6 +754,21 @@ async function autoConnect(){
   }
   updateRunBtn();renderSteps();updateHistBtn();
 }
+
+async function autoConnectSilent(){
+  // Like autoConnect but NEVER shows keyInputCard — used when launching from landing
+  document.getElementById("navStatus").textContent="Connecting...";
+  try{
+    await apiCall("Reply: ok",20);
+    S.conn=true;
+    document.getElementById("navDot").classList.add("on");
+    document.getElementById("navStatus").textContent="AI Engine Ready";
+  } catch(e){
+    document.getElementById("navStatus").textContent="Check connection";
+  }
+  updateRunBtn();renderSteps();updateHistBtn();
+}
+
 
 function showKeyInput(errMsg){
   var card=document.getElementById("keyInputCard");
