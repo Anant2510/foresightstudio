@@ -250,8 +250,8 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
         <h1 style="font-size:42px;font-weight:800;line-height:1.15;letter-spacing:-1px;color:var(--text);margin-bottom:16px">Know if your <span style="color:var(--orange)">creative will land</span> before you launch</h1>
         <p style="font-size:16px;color:var(--text2);line-height:1.7;margin-bottom:32px">Test digital ads, emails, and landing pages against AI-generated synthetic personas built from real CDP data. Get resonance scores, detailed reasoning, and rewrite suggestions — in minutes, not weeks.</p>
         <div style="display:flex;gap:12px;align-items:center">
-          <button class="btn btn-accent" style="padding:14px 32px;font-size:16px" onclick="launchApp()" id="launchBtn" disabled>
-            <span id="launchText">Connecting...</span>
+          <button class="btn btn-accent" style="padding:14px 32px;font-size:16px" onclick="launchApp()" id="launchBtn">
+            <span id="launchText">Launch Studio →</span>
           </button>
           <button class="btn btn-ghost" style="padding:14px 24px" onclick="document.getElementById('landingFeatures').scrollIntoView({behavior:'smooth'})">Learn More &#8595;</button>
         </div>
@@ -550,29 +550,14 @@ document.getElementById("app").classList.add("hid");
 _AK=resolveKey();
 renderTypes();renderFields();renderPersonas();
 
-// Enable Launch button IMMEDIATELY — never block the user
+// Simple init — button already enabled in HTML, just set status dot
 (function(){
-  var lb=document.getElementById("launchBtn");
-  var lt=document.getElementById("launchText");
   var ld=document.getElementById("landingDot");
   var ls=document.getElementById("landingStatus");
-  if(lb){lb.disabled=false;}
-  if(lt){lt.textContent="Launch Studio →";}
   if(_AK){
-    // Key found — show connecting state, warm up in background
-    if(ld)ld.style.background="#fbbf24";
-    if(ls)ls.textContent="Connecting...";
-    // Warm up connection in background (status dot only — does NOT block UI)
-    apiCall("Reply: ok",20).then(function(){
-      S.conn=true;
-      if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)";}
-      if(ls)ls.textContent="AI Engine Ready";
-    }).catch(function(){
-      if(ld)ld.style.background="#dc2626";
-      if(ls)ls.textContent="Ready — click Launch";
-    });
+    if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)";}
+    if(ls)ls.textContent="AI Engine Ready";
   } else {
-    // No key — yellow dot, but still let them launch (they can enter key in app if needed)
     if(ld)ld.style.background="#d97706";
     if(ls)ls.textContent="Ready";
   }
