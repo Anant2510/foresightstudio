@@ -286,7 +286,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
           <!-- Big headline -->
           <h1 style="font-size:30px;font-weight:800;color:#ffffff;line-height:1.2;margin-bottom:16px;letter-spacing:-0.5px">AI-Powered Engine to Predict Creative<br>Performance Before You Launch</h1>
           <!-- Description -->
-          <p style="font-size:13px;color:rgba(255,255,255,0.82);line-height:1.7;margin-bottom:24px;max-width:520px">Foresight Studio is a pre-built AI accelerator within the Xperion Marketplace. It tests digital ads, emails, and landing pages against synthetic personas built from real Adobe Experience Platform CDP data — delivering resonance scores, rewrite suggestions, and qualitative reasoning in minutes, not weeks.</p>
+          <p style="font-size:13px;color:rgba(255,255,255,0.82);line-height:1.7;margin-bottom:24px;max-width:520px">Foresight Studio is a pre-built AI accelerator within the Xperion Marketplace. It tests digital ads, emails, and landing pages against synthetic personas built from real customer segment data — delivering resonance scores, rewrite suggestions, and qualitative reasoning in minutes, not weeks.</p>
           <!-- CTA -->
           <div style="display:flex;gap:12px;align-items:center">
             <button onclick="launchApp()" id="launchBtn" style="background:#ffffff;color:#082340;border:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:-0.2px;transition:all 0.2s" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#ffffff'">
@@ -366,7 +366,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
           <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#F15B40;text-transform:uppercase;margin-bottom:10px">About This Accelerator</div>
           <h3 style="font-size:17px;font-weight:800;color:#082340;margin-bottom:12px;letter-spacing:-0.3px">What is Foresight Studio?</h3>
           <p style="font-size:13px;color:#475569;line-height:1.75;margin-bottom:12px">Foresight Studio is a pre-built AI accelerator within the <strong style="color:#082340">Xperion Marketplace</strong> — purpose-built for marketing teams to validate creative assets before campaign launch.</p>
-          <p style="font-size:13px;color:#475569;line-height:1.75;margin-bottom:12px">It transforms raw CDP segment data from <strong style="color:#082340">Adobe Experience Platform</strong> into synthetic personas, then evaluates your creative across five dimensions — returning resonance scores, rewrite suggestions, and full qualitative reasoning per persona.</p>
+          <p style="font-size:13px;color:#475569;line-height:1.75;margin-bottom:12px">It transforms raw CDP segment data from <strong style="color:#082340">your customer data platform</strong> into synthetic personas, then evaluates your creative across five dimensions — returning resonance scores, rewrite suggestions, and full qualitative reasoning per persona.</p>
           <p style="font-size:13px;color:#475569;line-height:1.75">From creative brief to predictive performance data in <strong style="color:#082340">minutes, not weeks</strong> — no focus groups, no production A/B tests needed.</p>
         </div>
         <div style="background:#ffffff;border:1px solid #e8ecf0;border-radius:12px;padding:24px">
@@ -446,7 +446,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
         <div style="background:linear-gradient(120deg,#082340 0%,#0d3a6b 60%,#1a3a50 100%);border-radius:12px;padding:28px 28px;display:flex;flex-direction:column;justify-content:center">
           <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(241,91,64,0.9);text-transform:uppercase;margin-bottom:8px">Xperion Marketplace</div>
           <div style="font-size:20px;font-weight:800;color:#ffffff;margin-bottom:8px;letter-spacing:-0.3px">Launch Foresight Studio</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:20px;line-height:1.5">Part of Coforge's Xperion Accelerator Marketplace<br>Powered by Claude AI · Adobe Experience Platform</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:20px;line-height:1.5">Part of Coforge's Xperion Accelerator Marketplace<br> · your customer data platform</div>
           <button onclick="launchApp()" style="background:#F15B40;color:#fff;border:none;padding:13px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;align-self:flex-start;transition:all 0.2s" onmouseover="this.style.background='#e04a30'" onmouseout="this.style.background='#F15B40'">Launch Studio →</button>
         </div>
       </div>
@@ -454,7 +454,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
       <!-- Footer -->
       <div style="display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:1px solid #e8ecf0">
         <div style="font-size:11px;color:#94a3b8">© 2025 Coforge · Xperion Platform · Foresight Studio</div>
-        <div style="font-size:11px;color:#94a3b8">Powered by Claude AI · Adobe Experience Platform</div>
+        <div style="font-size:11px;color:#94a3b8"> · your customer data platform</div>
       </div>
 
     </div><!-- /page content -->
@@ -603,7 +603,7 @@ function saveCustom(a){localStorage.setItem("fs_personas",JSON.stringify(a))}
 function getAll(){return PRESETS.concat(loadCustom())}
 var S={type:"digital-ad",mode:"single",crA:{},crB:{},sel:["yp","af","nr","sb"],conn:false,resA:[],resB:[],chatHistory:[],cancelled:false};
 
-var _MODEL="claude-sonnet-4-20250514";
+var _MODEL="foresight-engine";
 var _AK="";
 var _configSource="none";
 function gk(){return _AK;}
