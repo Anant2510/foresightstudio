@@ -241,6 +241,21 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
     <div style="padding:16px 32px;display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto;width:100%">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" width="180" height="36"><defs><linearGradient id="llgI" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#082340"/><stop offset="100%" stop-color="#0d3a6b"/></linearGradient><linearGradient id="llgA" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#F15B40"/><stop offset="100%" stop-color="#ff7a5c"/></linearGradient></defs><rect x="0" y="4" width="40" height="40" rx="10" fill="url(#llgI)"/><path d="M14 14 L28 24 L14 34 Z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" opacity="0.9"/><line x1="28" y1="24" x2="36" y2="16" stroke="url(#llgA)" stroke-width="2" stroke-linecap="round"/><line x1="28" y1="24" x2="36" y2="24" stroke="url(#llgA)" stroke-width="2" stroke-linecap="round"/><line x1="28" y1="24" x2="36" y2="32" stroke="url(#llgA)" stroke-width="2" stroke-linecap="round"/><circle cx="28" cy="24" r="2" fill="#F15B40"/><text x="52" y="26" font-family="Inter,system-ui,sans-serif" font-size="19" font-weight="700" fill="#082340" letter-spacing="-0.5">Foresight</text><text x="156" y="26" font-family="Inter,system-ui,sans-serif" font-size="19" font-weight="700" fill="#F15B40" letter-spacing="-0.5">Studio</text></svg>
       <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text3);background:var(--surface);padding:6px 14px;border-radius:20px;border:1px solid var(--border)"><div class="status-dot" id="landingDot"></div><span id="landingStatus">Starting...</span></div>
+    <script>
+    // Inline: runs immediately when this element is parsed
+    (function(){
+      var cfg = typeof window.FORESIGHT_KEY === "string" && window.FORESIGHT_KEY && window.FORESIGHT_KEY !== "YOUR_LLM_SECRET_KEY_HERE";
+      var ls = document.getElementById("landingStatus");
+      var ld = document.getElementById("landingDot");
+      if(cfg){
+        if(ls) ls.textContent = "AI Engine Ready";
+        if(ld){ ld.style.background="#16a34a"; ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)"; }
+      } else {
+        if(ls) ls.textContent = "Ready";
+        if(ld) ld.style.background = "#d97706";
+      }
+    })();
+    </script>
     </div>
 
     <!-- Hero -->
@@ -1258,6 +1273,24 @@ renderTypes();renderFields();renderPersonas();
   }
   updateRunBtn();renderSteps();
 })();
+
+// ── FALLBACK: window.onload ensures UI is correct even if INIT had issues ──
+window.addEventListener("load",function(){
+  if(!_AK)_AK=resolveKey();
+  var ls=document.getElementById("landingStatus");
+  var ld=document.getElementById("landingDot");
+  var lb=document.getElementById("launchBtn");
+  var lt=document.getElementById("launchText");
+  if(lb)lb.disabled=false;
+  if(lt&&(lt.textContent==="Starting..."||lt.textContent===""))lt.textContent="Launch Studio →";
+  if(_AK){
+    if(ls)ls.textContent="AI Engine Ready";
+    if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)";}
+  } else {
+    if(ls&&ls.textContent==="Starting...")ls.textContent="Ready";
+    if(ld&&!ld.style.background)ld.style.background="#d97706";
+  }
+});
 
 </script>
 </body>
