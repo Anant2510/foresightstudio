@@ -365,7 +365,10 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
     </div>
     <div style="display:flex;align-items:center;gap:16px">
       <button class="btn btn-ghost btn-sm" onclick="showHistory()" id="histBtn" style="display:none">History <span id="histCount" style="background:var(--accent);color:#fff;padding:1px 7px;border-radius:10px;font-size:10px;margin-left:4px"></span></button>
+      <div style="display:flex;align-items:center;gap:10px">
+      <button onclick="document.getElementById('app').classList.add('hid');document.getElementById('landingPage').classList.remove('hid');window.scrollTo(0,0);" style="background:none;border:1px solid var(--border2);border-radius:var(--radius-xs);padding:6px 14px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.borderColor='var(--orange)';this.style.color='var(--orange)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">&#8592; Home</button>
       <div class="nav-status"><div class="status-dot" id="navDot"></div><span id="navStatus">Initializing...</span></div>
+    </div>
     </div>
   </div>
 
@@ -524,6 +527,8 @@ function launchApp(){
   document.getElementById("landingPage").classList.add("hid");
   document.getElementById("app").classList.remove("hid");
   window.scrollTo(0,0);
+  // Re-resolve key in case config.js loaded after initial resolveKey() call
+  if(!_AK){_AK=resolveKey();}
   if(!S.conn)autoConnect();
 }
 
@@ -705,10 +710,17 @@ async function autoConnect(){
     if(ls)ls.textContent="Connection Failed";
     if(lb){lb.disabled=false;}
     if(lt){lt.textContent="Launch Studio →";}
-    showKeyInput(e.message);
-    // Show app so user can enter key
-    document.getElementById("landingPage").classList.add("hid");
-    document.getElementById("app").classList.remove("hid");
+    // Only show key input if no key was found at all
+    if(!_AK){
+      showKeyInput(e.message);
+      document.getElementById("landingPage").classList.add("hid");
+      document.getElementById("app").classList.remove("hid");
+    } else {
+      // Key exists but API call failed — show app with error, key pre-filled
+      document.getElementById("landingPage").classList.add("hid");
+      document.getElementById("app").classList.remove("hid");
+      showKeyInput("API Error: "+e.message+" (key loaded from "+_configSource+")");
+    }
   }
   updateRunBtn();renderSteps();updateHistBtn();
 }
@@ -724,6 +736,9 @@ function showKeyInput(errMsg){
   }
   card.style.display="block";
   document.getElementById("keyErrMsg").textContent=errMsg;
+  // Auto-populate key field if we already resolved one
+  var mk=document.getElementById("manualKey");
+  if(mk&&_AK&&mk.value===""){mk.value=_AK;}
 }
 
 function toggleManualKey(){var i=document.getElementById("manualKey"),b=document.getElementById("mkToggle");if(i.type==="password"){i.type="text";b.textContent="hide"}else{i.type="password";b.textContent="show"}}
