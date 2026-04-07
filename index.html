@@ -241,35 +241,10 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
     <!-- NAV — white, clean, matches reference exactly -->
     <nav style="background:#ffffff;border-bottom:1px solid #e8ecf0;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100">
       <!-- Left: Xperion | Foresight Studio -->
-      <div style="display:flex;align-items:center;gap:0">
-        <!-- Xperion logo: star + Perion wordmark -->
-        <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@800&display=swap" rel="stylesheet">
-        <div style="display:flex;align-items:center;margin-right:16px">
-          <div style="display:inline-flex;align-items:baseline;gap:0">
-
-            <!-- Orange 4-pointed star icon — aligned to baseline -->
-            <svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="flex-shrink:0;margin-right:2px;margin-bottom:2px;align-self:center">
-              <path d="M16 1 C15.5 7,11 11,1 16 C11 21,15.5 25,16 31 C16.5 25,21 21,31 16 C21 11,16.5 7,16 1Z" fill="#E8421E"/>
-            </svg>
-
-            <!-- P at 22px -->
-            <span style="font-size:22px;font-weight:800;color:#12213d;font-family:'Nunito',system-ui,sans-serif;line-height:1;letter-spacing:-0.2px">P</span>
-
-            <!-- erion at 30px so x-height matches P cap height -->
-            <span style="font-size:30px;font-weight:800;color:#12213d;font-family:'Nunito',system-ui,sans-serif;line-height:1;letter-spacing:-0.3px">er</span>
-
-            <!-- dotless i with orange star above, no black dot -->
-            <span style="position:relative;display:inline-block;font-size:30px;font-weight:800;color:#12213d;font-family:'Nunito',system-ui,sans-serif;line-height:1">&#305;<svg style="position:absolute;top:-8px;left:50%;transform:translateX(-50%)" width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M4 0.3 C3.8 2,2.5 3,0.3 4 C2.5 5,3.8 6,4 7.7 C4.2 6,5.5 5,7.7 4 C5.5 3,4.2 2,4 0.3Z" fill="#E8421E"/></svg></span>
-
-            <!-- on at 30px -->
-            <span style="font-size:30px;font-weight:800;color:#12213d;font-family:'Nunito',system-ui,sans-serif;line-height:1;letter-spacing:-0.3px">on</span>
-
-          </div>
-        </div>
-        <!-- Divider -->
-        <div style="width:1px;height:18px;background:#d1d9e0;margin-right:16px"></div>
-        <!-- Foresight Studio -->
-        <span style="font-size:14px;font-weight:500;color:#64748b;letter-spacing:-0.1px">Foresight Studio</span>
+      <div style="display:flex;align-items:center;gap:12px">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFcAAAAbCAYAAAAJUhN7AAAHxUlEQVR4nO2YeVBV1x3HP/fde9/CY1HAFVQCKMF9Ka5xR7FuaIOxOEqjWYzEWKeaumQ6ZtO0MTMR2zE6Wm20SlVmJMmIdasardG6JalL3VAWBUTZBB7vXd49/YMKwYflPQXaar//3Dnn/M7v+zvfe87v/u6RhBCC/6NRYPhPB/A045kSV5SXNSnfMyVuxba16EX3mozvmRFXOOxUfnMIR1pKk3E+G+I6ndjW/BpRXoZj9w60syeahFZ6mqsFPS8H7eRhtCN/Rr+dWTNgsqD0jEIdNAo16oVG43+qd67kH4ChbXvwa167X1UxtGqLIaBl4/K7tXOFAEl6fJYnnf+EEJUa9h0bcXz1J7B4YV2WhNwhvNF56925elEBpQsScF4467FzUVKE7XcfUpG8/rGCayhIioop7mUk/xaY4mY1urAPSj6l3sC8fTE814my5QtRBkVjHDUROTQCSVEf4VkgigrRTh3BnroNbKVYP/ysQYN/HEhGE8qgaNQBwxqfy8ta9XQnLej38imd91PQdQQgtw5CjuyOoV0ohuYBYFAQ5aXoOdk4r15Ev3YRoTkAMMXNxPRiQqMuxl0IzYGkGpuMr96dC2AIaIE6YjzagS+RAD33Fnrurfon+jXHGD2hunng2Gly7rgW8aoi07tbBB1DgpF+kJuFEFy9kUXaoRPczs1HkRU6dwph9JC+tAys+UiVltnYtfdrAKZOGElZuY20g8f57tI1vMxmXomfgKoq7D96CkWWiY+NruEAsm/l8fXJb7mcnkWZzYa3lxc9O4cxuF9PAv2bVdvaKux8uf8YDq2SuB8PQxeCY6e+4+TZi5SUlRES1JrYmMG0a9sK8KAUc2alU7roVSQPKjd19CQsM39e3R4/820OHj1dp60kSUweM4QNK5dgMZu4W1jEjLfe5/CJcy62FrOJ3yxN5LVpEwHIzrlDx8FTAVg4O57fbkrB7tCq7XeuW46P1cKY6b/AaFQpvrgPAIemMf/dJDbv3INT1114vCwmFrwez5K5CUiSxN2CYiKHxVNabuNnU8aSnLofh6bVmuNttbBm+UKmjB/h3s4FkIOfw+DfAnHvjrtTUHv1q93xr/cSHzuKsSMGVHUJwdX0LD5as4XUvUeZPX0Sg/v2YP6yJA6fOEfLQH8+XjqHHl064nBoHP7mLCvXJjP/3SQiQtsxpH+vWhSfrEtmUFR3EhN+QmTHEAoKiwntEMSV9Ewexifrktm0fTeyLLMocToxQ/vh39yXuwXFbN21ly0pe/gg6Q+EhwTz0oSRteZ+vjONqB6RJMSNoXe3CAqL7rNoxRouXLnB6o07PRMXSULp3Avt6F737A0GpJZtH/JR9egeGUbcuOHV3ZWVTrZ9sY/rGbfJyy/g2wtX2LXnCN5WC5tXvUNo+2AArBYLk8cM40ZmDmv/mMqq3+9wEffjpYnMnRlXK70ALuLaHRpbUqrWsmLR68yb9VL1WEQoDOzTFV8fb5I2bGfl2m0u4ia9N5/Xpk2sxfPGjEm89atPycsvANzMuQ9gCAh021YymjBYfeocS0k7xPWMqpytC8GtnDvczM5FVRUiQttz6VoGuhCUlVcQO2uxy3xdrzoCD3z8EFNjo12ErQsl98u4W1AIwPCBfVzjlySG9e9J0obtXE7P4OHsGT04yoXHy2IGqg+oZ+JiNLlva5BBrtv9me8vc+b7y9VtSZJo3cKfd+a9TLfIMLJz8wHw9rIwJ2EyFkvdvP5+vu7H8xBMRhWrl5nSchs3s3Lo9nyYi03m7TwAglq1cMunRG2xPRJX2CvcN9adUKnVObQ4cTqvxNdUEYosE+jfDEWRAXghqjsBzf0oKCrBoVWy5M0ZmM01AtsqKjh++jzhIcGehF8LPt5e9O/VlS/2H2Xxis8IadeGzp1CkQ0SQggOnzjH+59uAuDFscPcOg0PwyNx9bzbbtsKhx1hK0dq5u8y5ufrTXCbR//X+/pYWfvR28xZspJVG7bz+c49hHVoi8ViprC4hIzsXO6XlnNw+2o6BLf2ZAnVkCSJ5Ytm84/0TC5fz2DQ5Ddo37YlPt5WCgqLybxd9eEe0Kcrv0yc/lgc7ovrrMR5/ZL7nnUdZ9YNDG1qdtePuj2PYpBpH9Sq3unjowfRJSKUzSlpHDh6mvyCInRdx2ox069nF/r37kxY+yAAzCYjMUOrKhNZluv059/Ml5ih/VCUmiWHhQTxt6/WszV1Pym7D5F1K5e7BcV4WUyMGzmQKeOGExszBLOp6sfDqCqMHBxFRYUdo+oqXZtWgcQM7Uegvx/gQZ1befUi5cvmVl3CuAl15Hgsry5w2/5REELg0CoRQkeWZRRZfqxjWh+HVulE151IBgMm9RG/9x7A7StHbV+qR8ICaH89iF5S5GFIrpAkCZNRxWwyoSpKgwv7gMOoKphNpgYRFtxMC3puNtrxv1S3DR3CUXr1xdAhHENAayTZgF52Hz3rJs4r53FeOIsovQ8VNuypW7EkvNkgwf6vof604KykfPUHOP9+BmXIaIyjJyG3afdv72f1kiKc589hT9mInp9XdX8aHtnQsf/Xo15x9aICbEnvYZ4+Bzk0wqNLb6E5sCevB7/mmGOnPXGwTwphr0AymRufp+w+ktXHvQ+aEOLx85wQCGiUPOlxKHY7GI1NFss/ASbx1abu83PcAAAAAElFTkSuQmCC" alt="Xperion" style="width:87px;height:27px;display:block;flex-shrink:0">
+        <div style="width:1px;height:18px;background:#d8dde6"></div>
+        <span style="font-size:14px;font-weight:500;color:#173052;letter-spacing:-0.1px;line-height:1">Foresight Studio</span>
       </div>
       <!-- Right: status -->
       <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#64748b;background:#f8fafc;padding:5px 12px;border-radius:16px;border:1px solid #e2e8f0">
@@ -489,19 +464,12 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
 <div class="app hid" id="app">
   <!-- NAV -->
   <div class="nav">
-    <div class="logo" style="cursor:pointer" onclick="document.getElementById('app').classList.add('hid');document.getElementById('landingPage').classList.remove('hid');window.scrollTo(0,0)">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" width="200" height="40" style="display:block">
-        <defs><linearGradient id="lgI" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#082340"/><stop offset="100%" stop-color="#0d3a6b"/></linearGradient><linearGradient id="lgA" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#F15B40"/><stop offset="100%" stop-color="#ff7a5c"/></linearGradient></defs>
-        <rect x="0" y="4" width="40" height="40" rx="10" fill="url(#lgI)"/>
-        <path d="M14 14 L28 24 L14 34 Z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" opacity="0.9"/>
-        <line x1="28" y1="24" x2="36" y2="16" stroke="url(#lgA)" stroke-width="2" stroke-linecap="round"/>
-        <line x1="28" y1="24" x2="36" y2="24" stroke="url(#lgA)" stroke-width="2" stroke-linecap="round"/>
-        <line x1="28" y1="24" x2="36" y2="32" stroke="url(#lgA)" stroke-width="2" stroke-linecap="round"/>
-        <circle cx="28" cy="24" r="2" fill="#F15B40"/>
-        <text x="52" y="26" font-family="Inter,system-ui,sans-serif" font-size="19" font-weight="700" fill="#082340" letter-spacing="-0.5">Foresight</text>
-        <text x="156" y="26" font-family="Inter,system-ui,sans-serif" font-size="19" font-weight="700" fill="#F15B40" letter-spacing="-0.5">Studio</text>
-        <text x="52" y="40" font-family="Inter,system-ui,sans-serif" font-size="9" font-weight="500" fill="#8898aa" letter-spacing="0.5">PREDICT CREATIVE PERFORMANCE BEFORE LAUNCH</text>
-      </svg>
+    <div class="logo" style="cursor:pointer;gap:0" onclick="document.getElementById('app').classList.add('hid');document.getElementById('landingPage').classList.remove('hid');window.scrollTo(0,0)">
+      <div style="display:flex;align-items:center;gap:12px">
+        <img src="data:image/png;base64,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" alt="Xperion" style="width:87px;height:27px;display:block;flex-shrink:0">
+        <div style="width:1px;height:18px;background:#d8dde6"></div>
+        <span style="font-size:14px;font-weight:500;color:#173052;letter-spacing:-0.1px;line-height:1">Foresight Studio</span>
+      </div>
     </div>
     <div style="display:flex;align-items:center;gap:16px">
       <button class="btn btn-ghost btn-sm" onclick="showHistory()" id="histBtn" style="display:none">History <span id="histCount" style="background:var(--accent);color:#fff;padding:1px 7px;border-radius:10px;font-size:10px;margin-left:4px"></span></button>
