@@ -508,7 +508,8 @@ function resolveKey(){
   }
   // 2. localStorage (return visitor who entered key before)
   var stored=localStorage.getItem("foresight_api_key");
-  if(stored){_configSource="localStorage";return stored;}
+  if(stored&&stored.length>20&&stored.indexOf("sk-ant")===0){_configSource="localStorage";return stored;}
+  else if(stored){localStorage.removeItem("foresight_api_key");}  // clear invalid cached key
   // 3. URL ?key=
   var params=new URLSearchParams(window.location.search);
   var urlKey=params.get("key");
@@ -549,36 +550,31 @@ document.getElementById("app").classList.add("hid");
 _AK=resolveKey();
 renderTypes();renderFields();renderPersonas();
 
-// Silently test the connection in background — updates landing status dot
-// Does NOT navigate away from landing — just warms up the connection
-(async function initConnection(){
-  var ld=document.getElementById("landingDot");
-  var ls=document.getElementById("landingStatus");
+// Enable Launch button IMMEDIATELY — never block the user
+(function(){
   var lb=document.getElementById("launchBtn");
   var lt=document.getElementById("launchText");
-  if(!_AK){
+  var ld=document.getElementById("landingDot");
+  var ls=document.getElementById("landingStatus");
+  if(lb){lb.disabled=false;}
+  if(lt){lt.textContent="Launch Studio →";}
+  if(_AK){
+    // Key found — show connecting state, warm up in background
+    if(ld)ld.style.background="#fbbf24";
+    if(ls)ls.textContent="Connecting...";
+    // Warm up connection in background (status dot only — does NOT block UI)
+    apiCall("Reply: ok",20).then(function(){
+      S.conn=true;
+      if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)";}
+      if(ls)ls.textContent="AI Engine Ready";
+    }).catch(function(){
+      if(ld)ld.style.background="#dc2626";
+      if(ls)ls.textContent="Ready — click Launch";
+    });
+  } else {
+    // No key — yellow dot, but still let them launch (they can enter key in app if needed)
     if(ld)ld.style.background="#d97706";
-    if(ls)ls.textContent="API Key Required";
-    if(lb){lb.disabled=false;}
-    if(lt){lt.textContent="Launch Studio →";}
-    updateRunBtn();renderSteps();
-    return;
-  }
-  // Key found — test connection silently
-  if(ld)ld.style.background="#fbbf24";
-  if(ls)ls.textContent="Connecting...";
-  try{
-    await apiCall("Reply: ok",20);
-    S.conn=true;
-    if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)";}
-    if(ls)ls.textContent="AI Engine Ready";
-    if(lb){lb.disabled=false;}
-    if(lt){lt.textContent="Launch Studio →";}
-  } catch(e){
-    if(ld)ld.style.background="#dc2626";
-    if(ls)ls.textContent="Connection Failed";
-    if(lb){lb.disabled=false;}
-    if(lt){lt.textContent="Launch Studio →";}
+    if(ls)ls.textContent="Ready";
   }
   updateRunBtn();renderSteps();
 })();function exportReport(){
@@ -755,7 +751,7 @@ async function autoConnect(){
   updateRunBtn();renderSteps();updateHistBtn();
 }
 
-async function autoConnectSilent(){
+async async function autoConnectSilent(){
   // Like autoConnect but NEVER shows keyInputCard — used when launching from landing
   document.getElementById("navStatus").textContent="Connecting...";
   try{
@@ -776,7 +772,7 @@ function showKeyInput(errMsg){
     card=document.createElement("div");card.id="keyInputCard";
     card.className="glass-card card-glow";
     card.style.borderColor="rgba(27,20,100,0.15)";
-    card.innerHTML='<h3 style="color:var(--accent2);font-size:13px;margin-bottom:8px">&#128273; Authentication Required</h3><p class="desc" id="keyErrMsg"></p><div class="row" style="align-items:flex-end"><div style="flex:3"><label>API Key</label><div style="position:relative"><input type="password" id="manualKey" placeholder="sk-ant-api03-..." style="font-size:12px"/><button onclick="toggleManualKey()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer" id="mkToggle">show</button></div></div><div style="flex:0"><button class="btn btn-accent btn-sm" onclick="retryWithKey()">Connect</button></div></div><p style="font-size:11px;color:var(--text3);margin-top:10px">Tip: Add <code style="background:var(--surface2);padding:2px 6px;border-radius:4px">?key=YOUR_KEY</code> to the URL to auto-connect next time.</p>';
+    card.innerHTML='<h3 style="color:var(--accent2);font-size:13px;margin-bottom:8px">&#128273; Authentication Required</h3><p class="desc" id="keyErrMsg"></p><div class="row" style="align-items:flex-end"><div style="flex:3"><label>API Key</label><div style="position:relative"><input type="password" id="manualKey" placeholder="sk-ant-api03-..." style="font-size:12px"/><button onclick="toggleManualKey()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer" id="mkToggle">show</button></div></div><div style="flex:0"><button class="btn btn-accent btn-sm" onclick="retryWithKey()">Connect</button></div></div><p style="font-size:11px;color:var(--text3);margin-top:10px">Your key will be remembered for next time automatically.</p>';
     document.getElementById("stepsBar").after(card);
   }
   card.style.display="block";
@@ -792,7 +788,8 @@ function retryWithKey(){
   var k=document.getElementById("manualKey").value.trim();
   if(!k){alert("Please enter an API key.");return}
   _AK=k;
-  // Update URL without reload so it persists on refresh
+  localStorage.setItem("foresight_api_key",k);
+  // Update URL without reload
   var url=new URL(window.location);
   url.searchParams.set("key",k);
   window.history.replaceState({},"",url);
