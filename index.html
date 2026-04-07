@@ -493,31 +493,57 @@ function getAll(){return PRESETS.concat(loadCustom())}
 var S={type:"digital-ad",mode:"single",crA:{},crB:{},sel:["yp","af","nr","sb"],conn:false,resA:[],resB:[],chatHistory:[],cancelled:false};
 
 var _AK="";
-function gk(){return _AK}
+var _configSource="none";
+function gk(){return _AK;}
 
-// Read key from URL: ?key=sk-ant-...
-function getKeyFromURL(){
+// ── Full key resolution chain (Xperion Skill Pattern) ──
+function resolveKey(){
+  // 1. config.js (injected by GitHub Actions — never committed)
+  if(typeof window.FORESIGHT_KEY==="string"&&window.FORESIGHT_KEY&&window.FORESIGHT_KEY!=="YOUR_LLM_SECRET_KEY_HERE"){
+    _configSource="config";return window.FORESIGHT_KEY;
+  }
+  // 2. localStorage (return visitor who entered key before)
+  var stored=localStorage.getItem("foresight_api_key");
+  if(stored){_configSource="localStorage";return stored;}
+  // 3. URL ?key=
   var params=new URLSearchParams(window.location.search);
-  return params.get("key")||"";
+  var urlKey=params.get("key");
+  if(urlKey){_configSource="url";localStorage.setItem("foresight_api_key",urlKey);return urlKey;}
+  // 4. URL #key=
+  var hash=window.location.hash;
+  if(hash.indexOf("#key=")===0){var hKey=hash.substring(5);_configSource="hash";localStorage.setItem("foresight_api_key",hKey);return hKey;}
+  // 5. URL ?bkey= (base64 encoded)
+  var bkey=params.get("bkey");
+  if(bkey){try{var dec=atob(bkey);_configSource="base64";localStorage.setItem("foresight_api_key",dec);return dec;}catch(e){}}
+  // 6. No key
+  _configSource="none";return "";
 }
 
-// INIT
-_AK="__FORESIGHT_KEY__"||getKeyFromURL();
+// ── Launch App (from landing page) ──
+function launchApp(){
+  document.getElementById("landingPage").classList.add("hid");
+  document.getElementById("app").classList.remove("hid");
+  window.scrollTo(0,0);
+  if(!S.conn)autoConnect();
+}
+
+// ── INIT ──
+_AK=resolveKey();
 renderTypes();renderFields();renderPersonas();
 
 if(_AK){
-  // Has key — skip landing, go straight to app
+  // Key found — skip landing, go straight to app
   document.getElementById("landingPage").classList.add("hid");
   document.getElementById("app").classList.remove("hid");
   autoConnect();
 } else {
-  // No key — show landing page, let user click Launch then enter key
+  // No key — show landing page
   document.getElementById("landingPage").classList.remove("hid");
   document.getElementById("app").classList.add("hid");
   var lb=document.getElementById("launchBtn");
-  if(lb){lb.disabled=false;document.getElementById("launchText").textContent="Launch Studio →"}
-  var ld=document.getElementById("landingDot");if(ld)ld.style.background="#d97706";
-  var ls=document.getElementById("landingStatus");if(ls)ls.textContent="API Key Required";
+  if(lb){lb.disabled=false;document.getElementById("launchText").textContent="Launch Studio →";}
+  var ld=document.getElementById("landingDot");if(ld){ld.style.background="#d97706";}
+  var ls=document.getElementById("landingStatus");if(ls){ls.textContent="API Key Required";}
   updateRunBtn();renderSteps();function exportReport(){
   var f=FIELDS[S.type];
   var valid=S.resA.filter(function(x){return x.r.overall>0});
@@ -657,29 +683,32 @@ if(_AK){
 updateHistBtn();
 }
 
-function launchApp(){
-  document.getElementById("landingPage").classList.add("hid");
-  document.getElementById("app").classList.remove("hid");
-  window.scrollTo(0,0);
-  if(!S.conn) autoConnect();
-}
-
 async function autoConnect(){
   document.getElementById("navStatus").textContent="Connecting...";
-  var ld=document.getElementById("landingDot");var ls=document.getElementById("landingStatus");var lb=document.getElementById("launchBtn");var lt=document.getElementById("launchText");
-  if(ld)ld.style.background="#fbbf24";if(ls)ls.textContent="Connecting...";
-  try{await apiCall("Reply: ok",20);S.conn=true;
-    document.getElementById("navDot").classList.add("on");document.getElementById("navStatus").textContent="AI Engine Ready";
-    if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)"}
+  var ld=document.getElementById("landingDot"),ls=document.getElementById("landingStatus"),lb=document.getElementById("launchBtn"),lt=document.getElementById("launchText");
+  if(ld)ld.style.background="#fbbf24";
+  if(ls)ls.textContent="Connecting...";
+  try{
+    await apiCall("Reply: ok",20);
+    S.conn=true;
+    document.getElementById("navDot").classList.add("on");
+    document.getElementById("navStatus").textContent="AI Engine Ready";
+    if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)";}
     if(ls)ls.textContent="AI Engine Ready";
-    if(lb)lb.disabled=false;if(lt)lt.textContent="Launch Studio →";
+    if(lb){lb.disabled=false;}
+    if(lt){lt.textContent="Launch Studio →";}
     var ki=document.getElementById("keyInputCard");if(ki)ki.style.display="none";
   }
   catch(e){
     document.getElementById("navStatus").textContent="Connection issue";
-    if(ld)ld.style.background="#dc2626";if(ls)ls.textContent="Connection Failed";
-    if(lb)lb.disabled=false;if(lt)lt.textContent="Launch Studio →";
+    if(ld)ld.style.background="#dc2626";
+    if(ls)ls.textContent="Connection Failed";
+    if(lb){lb.disabled=false;}
+    if(lt){lt.textContent="Launch Studio →";}
     showKeyInput(e.message);
+    // Show app so user can enter key
+    document.getElementById("landingPage").classList.add("hid");
+    document.getElementById("app").classList.remove("hid");
   }
   updateRunBtn();renderSteps();updateHistBtn();
 }
