@@ -240,7 +240,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
     <!-- Landing Nav -->
     <div style="padding:16px 32px;display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto;width:100%">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" width="180" height="36"><defs><linearGradient id="llgI" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#082340"/><stop offset="100%" stop-color="#0d3a6b"/></linearGradient><linearGradient id="llgA" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#F15B40"/><stop offset="100%" stop-color="#ff7a5c"/></linearGradient></defs><rect x="0" y="4" width="40" height="40" rx="10" fill="url(#llgI)"/><path d="M14 14 L28 24 L14 34 Z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" opacity="0.9"/><line x1="28" y1="24" x2="36" y2="16" stroke="url(#llgA)" stroke-width="2" stroke-linecap="round"/><line x1="28" y1="24" x2="36" y2="24" stroke="url(#llgA)" stroke-width="2" stroke-linecap="round"/><line x1="28" y1="24" x2="36" y2="32" stroke="url(#llgA)" stroke-width="2" stroke-linecap="round"/><circle cx="28" cy="24" r="2" fill="#F15B40"/><text x="52" y="26" font-family="Inter,system-ui,sans-serif" font-size="19" font-weight="700" fill="#082340" letter-spacing="-0.5">Foresight</text><text x="156" y="26" font-family="Inter,system-ui,sans-serif" font-size="19" font-weight="700" fill="#F15B40" letter-spacing="-0.5">Studio</text></svg>
-      <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text3);background:var(--surface);padding:6px 14px;border-radius:20px;border:1px solid var(--border)"><div class="status-dot" id="landingDot"></div><span id="landingStatus">Connecting...</span></div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text3);background:var(--surface);padding:6px 14px;border-radius:20px;border:1px solid var(--border)"><div class="status-dot" id="landingDot"></div><span id="landingStatus">Starting...</span></div>
     </div>
 
     <!-- Hero -->
@@ -542,27 +542,7 @@ function launchApp(){
   }
 }
 
-// ── INIT ──
-// ALWAYS show landing page first — app only opens when user clicks Launch
-document.getElementById("landingPage").classList.remove("hid");
-document.getElementById("app").classList.add("hid");
-
-_AK=resolveKey();
-renderTypes();renderFields();renderPersonas();
-
-// Simple init — button already enabled in HTML, just set status dot
-(function(){
-  var ld=document.getElementById("landingDot");
-  var ls=document.getElementById("landingStatus");
-  if(_AK){
-    if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)";}
-    if(ls)ls.textContent="AI Engine Ready";
-  } else {
-    if(ld)ld.style.background="#d97706";
-    if(ls)ls.textContent="Ready";
-  }
-  updateRunBtn();renderSteps();
-})();function exportReport(){
+function exportReport(){
   var f=FIELDS[S.type];
   var valid=S.resA.filter(function(x){return x.r.overall>0});
   var avg=valid.length>0?(valid.reduce(function(s,x){return s+x.r.overall},0)/valid.length).toFixed(1):"-";
@@ -1255,6 +1235,30 @@ async function sendChat(){
   }catch(e){var el=document.getElementById("typingMsg");if(el)el.remove();ca.innerHTML+='<div class="chat-msg agent"><div class="chat-icon">R</div><div class="chat-bubble" style="color:var(--red)">Error: '+esc(e.message)+'</div></div>'}
   document.getElementById("chatSendBtn").disabled=false;ca.scrollTop=ca.scrollHeight;
 }
+
+
+// ── INIT ──
+// ALWAYS show landing page first — app only opens when user clicks Launch
+document.getElementById("landingPage").classList.remove("hid");
+document.getElementById("app").classList.add("hid");
+
+_AK=resolveKey();
+renderTypes();renderFields();renderPersonas();
+
+// Simple init — button already enabled in HTML, just set status dot
+(function(){
+  var ld=document.getElementById("landingDot");
+  var ls=document.getElementById("landingStatus");
+  if(_AK){
+    if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)";}
+    if(ls)ls.textContent="AI Engine Ready";
+  } else {
+    if(ld)ld.style.background="#d97706";
+    if(ls)ls.textContent="Ready";
+  }
+  updateRunBtn();renderSteps();
+})();
+
 </script>
 </body>
 </html>
