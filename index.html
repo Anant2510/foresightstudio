@@ -244,15 +244,15 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
     <script>
     // Inline: runs immediately when this element is parsed
     (function(){
-      var cfg = typeof window.FORESIGHT_KEY === "string" && window.FORESIGHT_KEY && window.FORESIGHT_KEY !== "YOUR_LLM_SECRET_KEY_HERE";
-      var ls = document.getElementById("landingStatus");
-      var ld = document.getElementById("landingDot");
+      var cfg=typeof window.FORESIGHT_KEY==="string"&&window.FORESIGHT_KEY&&window.FORESIGHT_KEY!=="YOUR_LLM_SECRET_KEY_HERE";
+      var ls=document.getElementById("landingStatus");
+      var ld=document.getElementById("landingDot");
       if(cfg){
-        if(ls) ls.textContent = "AI Engine Ready";
-        if(ld){ ld.style.background="#16a34a"; ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)"; }
+        if(ls)ls.textContent="AI Engine Ready";
+        if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)";}
       } else {
-        if(ls) ls.textContent = "Ready";
-        if(ld) ld.style.background = "#d97706";
+        if(ls)ls.textContent="Ready";
+        if(ld)ld.style.background="#d97706";
       }
     })();
     </script>
