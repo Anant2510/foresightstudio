@@ -495,6 +495,7 @@ function saveCustom(a){localStorage.setItem("fs_personas",JSON.stringify(a))}
 function getAll(){return PRESETS.concat(loadCustom())}
 var S={type:"digital-ad",mode:"single",crA:{},crB:{},sel:["yp","af","nr","sb"],conn:false,resA:[],resB:[],chatHistory:[],cancelled:false};
 
+var _MODEL="claude-sonnet-4-20250514";
 var _AK="";
 var _configSource="none";
 function gk(){return _AK;}
@@ -711,15 +712,13 @@ async function autoConnect(){
     if(lb){lb.disabled=false;}
     if(lt){lt.textContent="Launch Studio →";}
     // Only show key input if no key was found at all
+    document.getElementById("landingPage").classList.add("hid");
+    document.getElementById("app").classList.remove("hid");
     if(!_AK){
       showKeyInput(e.message);
-      document.getElementById("landingPage").classList.add("hid");
-      document.getElementById("app").classList.remove("hid");
     } else {
-      // Key exists but API call failed — show app with error, key pre-filled
-      document.getElementById("landingPage").classList.add("hid");
-      document.getElementById("app").classList.remove("hid");
-      showKeyInput("API Error: "+e.message+" (key loaded from "+_configSource+")");
+      // Key exists but API call failed (wrong key or network) — show error inline, pre-fill key
+      showKeyInput("Connection failed: "+e.message);
     }
   }
   updateRunBtn();renderSteps();updateHistBtn();
