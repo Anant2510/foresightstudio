@@ -694,7 +694,6 @@ function exportReport(){
 }
 
 updateHistBtn();
-}
 
 async function autoConnect(){
   document.getElementById("navStatus").textContent="Connecting...";
@@ -731,7 +730,7 @@ async function autoConnect(){
   updateRunBtn();renderSteps();updateHistBtn();
 }
 
-async async function autoConnectSilent(){
+async function autoConnectSilent(){
   // Like autoConnect but NEVER shows keyInputCard — used when launching from landing
   document.getElementById("navStatus").textContent="Connecting...";
   try{
