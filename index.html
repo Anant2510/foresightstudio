@@ -564,10 +564,18 @@ var S={type:"digital-ad",mode:"single",crA:{},crB:{},sel:["yp","af","nr","sb"],c
 var _AK="";
 function gk(){return _AK}
 
-// Read key from URL: ?key=sk-ant-...
-function getKeyFromURL(){
-  var params=new URLSearchParams(window.location.search);
-  return params.get("key")||"";
+// Multi-source key resolver: config.js → localStorage → URL ?key= → URL #key=
+function resolveKey(){
+  // 1. config.js (injected at build time via GitHub Actions)
+  if(typeof FORESIGHT_KEY!=="undefined"&&FORESIGHT_KEY)return FORESIGHT_KEY;
+  if(typeof INTELLISIGHT_KEY!=="undefined"&&INTELLISIGHT_KEY)return INTELLISIGHT_KEY;
+  // 2. localStorage (persisted from previous session)
+  try{var lk=localStorage.getItem("fs_ak")||localStorage.getItem("intellisight_ak");if(lk)return lk;}catch(e){}
+  // 3. URL ?key= param
+  try{var p=new URLSearchParams(window.location.search).get("key");if(p)return p;}catch(e){}
+  // 4. URL hash #key=
+  try{var h=window.location.hash.replace("#","");var hp=new URLSearchParams(h).get("key");if(hp)return hp;}catch(e){}
+  return "";
 }
 
 // launchApp — called from landing page CTA buttons
@@ -584,32 +592,44 @@ async function landingConnect(){
   var btn=document.getElementById("launchBtn");
   var txt=document.getElementById("launchText");
   var err=document.getElementById("landingError");
+  if(!_AK){
+    dot.style.background="var(--red)";
+    status.textContent="No API key";
+    err.style.display="block";
+    err.innerHTML='No API key found. Add <code style="background:var(--surface2);padding:2px 6px;border-radius:4px">?key=YOUR_KEY</code> to the URL.';
+    btn.disabled=false;
+    txt.textContent="Launch Studio →";
+    return;
+  }
   try{
     await apiCall("Reply: ok",20);
     S.conn=true;
+    // Persist key for next visit
+    try{localStorage.setItem("fs_ak",_AK)}catch(e){}
     dot.classList.add("on");
     status.textContent="AI Engine Ready";
     btn.disabled=false;
     txt.textContent="Launch Studio →";
   } catch(e){
     dot.style.background="var(--red)";
-    status.textContent="Connection issue";
+    status.textContent="Connection failed";
     err.style.display="block";
-    err.textContent="Add ?key=YOUR_KEY to the URL to connect.";
+    err.textContent="Key invalid or network error: "+e.message;
     btn.disabled=false;
     txt.textContent="Launch Studio →";
   }
 }
 
 // INIT
-_AK=getKeyFromURL();
+_AK=resolveKey();
 renderTypes();renderFields();renderPersonas();
 
+landingConnect();
+
 if(_AK){
-  landingConnect();
   autoConnect();
 } else {
-  showKeyInput("No API key found in URL. Add ?key=YOUR_KEY to the URL, or enter it below");
+  showKeyInput("No API key found. Add ?key=YOUR_KEY to the URL, or enter it below.");
   updateRunBtn();renderSteps();function exportReport(){
   var f=FIELDS[S.type];
   var valid=S.resA.filter(function(x){return x.r.overall>0});
