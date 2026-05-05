@@ -561,13 +561,16 @@ function loadCustom(){try{return JSON.parse(localStorage.getItem("fs_personas")|
 function saveCustom(a){localStorage.setItem("fs_personas",JSON.stringify(a))}
 var S={type:"digital-ad",mode:"single",crA:{},crB:{},sel:["yp","af","nr","sb"],conn:false,resA:[],resB:[],chatHistory:[],cancelled:false};
 
+var _MODEL="claude-sonnet-4-20250514";
 var _AK="";
 function gk(){return _AK}
 
 // Multi-source key resolver: config.js → localStorage → URL ?key= → URL #key=
 function resolveKey(){
-  // 1. config.js (injected at build time via GitHub Actions)
+  // 1. config.js via GitHub Actions (deploy.yml sets window.FORESIGHT_KEY)
+  if(typeof window.FORESIGHT_KEY!=="undefined"&&window.FORESIGHT_KEY)return window.FORESIGHT_KEY;
   if(typeof FORESIGHT_KEY!=="undefined"&&FORESIGHT_KEY)return FORESIGHT_KEY;
+  if(typeof window.INTELLISIGHT_KEY!=="undefined"&&window.INTELLISIGHT_KEY)return window.INTELLISIGHT_KEY;
   if(typeof INTELLISIGHT_KEY!=="undefined"&&INTELLISIGHT_KEY)return INTELLISIGHT_KEY;
   // 2. localStorage (persisted from previous session)
   try{var lk=localStorage.getItem("fs_ak")||localStorage.getItem("intellisight_ak");if(lk)return lk;}catch(e){}
