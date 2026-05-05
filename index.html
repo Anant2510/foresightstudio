@@ -11,7 +11,7 @@
 body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 body::before{display:none}
 @keyframes meshMove{0%{transform:translate(0,0)}100%{transform:translate(-5%,3%)}}
-.app{position:relative;z-index:1;max-width:100%;margin:0;padding:24px 5%}
+.app{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:24px 32px}
 /* NAV */
 .nav{display:flex;justify-content:space-between;align-items:center;padding:14px 24px;margin-bottom:28px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow)}
 .logo{display:flex;align-items:center;gap:12px}
@@ -235,248 +235,145 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
 <svg style="position:absolute;width:0;height:0"><defs><linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#082340"/><stop offset="100%" stop-color="#F15B40"/></linearGradient></defs></svg>
 
 <!-- LANDING PAGE -->
-<div id="landingPage">
-  <div style="min-height:100vh;display:flex;flex-direction:column;background:#f0f2f5;font-family:'Inter',system-ui,sans-serif;">
+<div id="landingPage" class="hid">
+  <div style="min-height:100vh;display:flex;flex-direction:column">
+    <!-- Landing Nav -->
+    <div style="padding:16px 32px;display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto;width:100%">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" width="180" height="36"><defs><linearGradient id="llgI" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#082340"/><stop offset="100%" stop-color="#0d3a6b"/></linearGradient><linearGradient id="llgA" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#F15B40"/><stop offset="100%" stop-color="#ff7a5c"/></linearGradient></defs><rect x="0" y="4" width="40" height="40" rx="10" fill="url(#llgI)"/><path d="M14 14 L28 24 L14 34 Z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" opacity="0.9"/><line x1="28" y1="24" x2="36" y2="16" stroke="url(#llgA)" stroke-width="2" stroke-linecap="round"/><line x1="28" y1="24" x2="36" y2="24" stroke="url(#llgA)" stroke-width="2" stroke-linecap="round"/><line x1="28" y1="24" x2="36" y2="32" stroke="url(#llgA)" stroke-width="2" stroke-linecap="round"/><circle cx="28" cy="24" r="2" fill="#F15B40"/><text x="52" y="26" font-family="Inter,system-ui,sans-serif" font-size="19" font-weight="700" fill="#082340" letter-spacing="-0.5">Foresight</text><text x="156" y="26" font-family="Inter,system-ui,sans-serif" font-size="19" font-weight="700" fill="#F15B40" letter-spacing="-0.5">Studio</text></svg>
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text3);background:var(--surface);padding:6px 14px;border-radius:20px;border:1px solid var(--border)"><div class="status-dot" id="landingDot"></div><span id="landingStatus">Connecting...</span></div>
+    </div>
 
-    <!-- NAV — white, clean, matches reference exactly -->
-    <nav style="background:#ffffff;border-bottom:1px solid #e8ecf0;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100">
-      <!-- Left: Xperion | Foresight Studio -->
-      <div style="display:flex;align-items:center;gap:12px">
-        <img src="data:image/png;base64,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" alt="Xperion" style="width:87px;height:27px;display:block;flex-shrink:0">
-        <div style="width:1px;height:18px;background:#d8dde6"></div>
-        <span style="font-size:14px;font-weight:500;color:#173052;letter-spacing:-0.1px;line-height:1">Foresight Studio</span>
-      </div>
-      <!-- Right: status -->
-      <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#64748b;background:#f8fafc;padding:5px 12px;border-radius:16px;border:1px solid #e2e8f0">
-        <div class="status-dot" id="landingDot" style="width:7px;height:7px;border-radius:50%;background:#94a3b8"></div>
-        <span id="landingStatus">Starting...</span>
-      </div>
-      <script>
-      (function(){
-        var cfg=typeof window.FORESIGHT_KEY==="string"&&window.FORESIGHT_KEY&&window.FORESIGHT_KEY!=="YOUR_LLM_SECRET_KEY_HERE";
-        var ls=document.getElementById("landingStatus");
-        var ld=document.getElementById("landingDot");
-        if(cfg){
-          if(ls)ls.textContent="AI Engine Ready";
-          if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 6px rgba(22,163,74,0.5)";}
-        } else {
-          if(ls)ls.textContent="Ready";
-          if(ld)ld.style.background="#d97706";
-        }
-      })();
-      </script>
-    </nav>
-
-    <!-- PAGE CONTENT -->
-    <div style="flex:1;padding:0;max-width:100%;margin:0;width:100%;box-sizing:border-box">
-
-      <!-- HERO CARD — matches reference: rounded, purple→orange gradient, text left + visual right -->
-      <div style="border-radius:12px;overflow:hidden;position:relative;background:linear-gradient(105deg,#5a2d82 0%,#7b3fa0 20%,#a0416a 42%,#c95230 65%,#e8621a 80%,#f07020 100%);padding:40px 48px;min-height:240px;display:flex;align-items:center;margin:16px 24px 0">
-        <!-- Subtle noise overlay -->
-        <div style="position:absolute;inset:0;opacity:0.04;background-image:url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/%3E%3C/svg%3E')"></div>
-
-        <div style="position:relative;z-index:1;flex:1;max-width:620px">
-          <!-- Title + badge row -->
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-            <span style="font-size:20px;font-weight:800;color:#ffffff;letter-spacing:-0.3px">Foresight Studio</span>
-            <span style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.3);color:#ffffff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:0.3px">Accelerator</span>
-          </div>
-          <!-- Sub-label -->
-          <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:20px;font-weight:500">Industry Accelerator · Marketing & Creative Intelligence</div>
-          <!-- Big headline -->
-          <h1 style="font-size:30px;font-weight:800;color:#ffffff;line-height:1.2;margin-bottom:16px;letter-spacing:-0.5px">AI-Powered Engine to Predict Creative<br>Performance Before You Launch</h1>
-          <!-- Description -->
-          <p style="font-size:13px;color:rgba(255,255,255,0.82);line-height:1.7;margin-bottom:24px;max-width:520px">Foresight Studio is a pre-built AI accelerator within the Xperion Marketplace. It tests digital ads, emails, and landing pages against synthetic personas built from real customer segment data — delivering resonance scores, rewrite suggestions, and qualitative reasoning in minutes, not weeks.</p>
-          <!-- CTA -->
-          <div style="display:flex;gap:12px;align-items:center">
-            <button onclick="launchApp()" id="launchBtn" style="background:#ffffff;color:#082340;border:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:-0.2px;transition:all 0.2s" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#ffffff'">
-              <span id="launchText">Launch Studio →</span>
-            </button>
-            <button onclick="document.getElementById('landingFeatures').scrollIntoView({behavior:'smooth'})" style="background:rgba(255,255,255,0.1);color:#ffffff;border:1px solid rgba(255,255,255,0.3);padding:12px 22px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.18)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">Learn More ↓</button>
-          </div>
+    <!-- Hero -->
+    <div style="flex:1;display:flex;align-items:center;max-width:1200px;margin:0 auto;padding:0 32px;width:100%">
+      <div style="flex:1;max-width:560px">
+        <div style="display:inline-block;background:var(--orange-light);color:var(--orange);font-size:12px;font-weight:700;padding:6px 16px;border-radius:20px;margin-bottom:20px;border:1px solid rgba(241,91,64,0.15)">AI-Powered Creative Testing</div>
+        <h1 style="font-size:42px;font-weight:800;line-height:1.15;letter-spacing:-1px;color:var(--text);margin-bottom:16px">Know if your <span style="color:var(--orange)">creative will land</span> before you launch</h1>
+        <p style="font-size:16px;color:var(--text2);line-height:1.7;margin-bottom:32px">Test digital ads, emails, and landing pages against AI-generated synthetic personas built from real CDP data. Get resonance scores, detailed reasoning, and rewrite suggestions — in minutes, not weeks. Includes preloaded demos for Airlines and Banking.</p>
+        <div style="display:flex;gap:12px;align-items:center">
+          <button class="btn btn-accent" style="padding:14px 32px;font-size:16px" onclick="launchApp()" id="launchBtn" disabled>
+            <span id="launchText">Connecting...</span>
+          </button>
+          <button class="btn btn-ghost" style="padding:14px 24px" onclick="document.getElementById('landingFeatures').scrollIntoView({behavior:'smooth'})">Learn More &#8595;</button>
         </div>
-
-        <!-- Right: decorative heatmap card -->
-        <div style="position:absolute;right:40px;top:50%;transform:translateY(-50%);width:300px">
-          <div style="background:#ffffff;border-radius:12px;padding:16px;box-shadow:0 8px 32px rgba(0,0,0,0.25)">
-            <!-- Mac-style window dots -->
-            <div style="display:flex;gap:5px;margin-bottom:12px">
-              <div style="width:8px;height:8px;border-radius:50%;background:#ff5f57"></div>
-              <div style="width:8px;height:8px;border-radius:50%;background:#febc2e"></div>
-              <div style="width:8px;height:8px;border-radius:50%;background:#28c840"></div>
+        <div id="landingError" style="margin-top:16px;font-size:13px;color:var(--red);display:none"></div>
+      </div>
+      <div style="flex:1;display:flex;justify-content:center;padding-left:40px">
+        <!-- Hero visual: stylized preview -->
+        <div style="width:380px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;box-shadow:var(--shadow-lg);transform:rotate(2deg)">
+          <div style="display:flex;gap:6px;margin-bottom:16px"><div style="width:10px;height:10px;border-radius:50%;background:#F15B40"></div><div style="width:10px;height:10px;border-radius:50%;background:#fbbf24"></div><div style="width:10px;height:10px;border-radius:50%;background:#16a34a"></div></div>
+          <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:12px">
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Resonance Heatmap</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px">
+              <div style="height:28px;border-radius:4px;background:rgba(22,163,74,0.15);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#16a34a">8</div>
+              <div style="height:28px;border-radius:4px;background:rgba(22,163,74,0.15);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#16a34a">7</div>
+              <div style="height:28px;border-radius:4px;background:rgba(217,119,6,0.12);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#d97706">5</div>
+              <div style="height:28px;border-radius:4px;background:rgba(220,38,38,0.12);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#dc2626">3</div>
+              <div style="height:28px;border-radius:4px;background:rgba(217,119,6,0.12);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#d97706">6</div>
+              <div style="height:28px;border-radius:4px;background:rgba(22,163,74,0.15);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#16a34a">9</div>
+              <div style="height:28px;border-radius:4px;background:rgba(22,163,74,0.15);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#16a34a">7</div>
+              <div style="height:28px;border-radius:4px;background:rgba(217,119,6,0.12);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#d97706">5</div>
             </div>
-            <!-- Header -->
-            <div style="font-size:8px;font-weight:700;color:#8898aa;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">Resonance Heatmap</div>
-            <!-- Heatmap grid — solid colors for visibility -->
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-bottom:10px">
-              <div style="padding:7px 4px;border-radius:4px;background:#dcfce7;text-align:center;font-size:12px;font-weight:800;color:#16a34a">8</div>
-              <div style="padding:7px 4px;border-radius:4px;background:#dcfce7;text-align:center;font-size:12px;font-weight:800;color:#16a34a">7</div>
-              <div style="padding:7px 4px;border-radius:4px;background:#fef9c3;text-align:center;font-size:12px;font-weight:800;color:#d97706">5</div>
-              <div style="padding:7px 4px;border-radius:4px;background:#fee2e2;text-align:center;font-size:12px;font-weight:800;color:#dc2626">3</div>
-              <div style="padding:7px 4px;border-radius:4px;background:#fef9c3;text-align:center;font-size:12px;font-weight:800;color:#d97706">6</div>
-              <div style="padding:7px 4px;border-radius:4px;background:#dcfce7;text-align:center;font-size:12px;font-weight:800;color:#16a34a">9</div>
-              <div style="padding:7px 4px;border-radius:4px;background:#dcfce7;text-align:center;font-size:12px;font-weight:800;color:#16a34a">7</div>
-              <div style="padding:7px 4px;border-radius:4px;background:#fef9c3;text-align:center;font-size:12px;font-weight:800;color:#d97706">5</div>
-            </div>
-            <!-- First reaction -->
-            <div style="background:#fff4f1;border-left:3px solid #F15B40;border-radius:4px;padding:8px 10px;margin-bottom:8px">
-              <div style="font-size:8px;font-weight:700;color:#F15B40;text-transform:uppercase;margin-bottom:2px">First Reaction</div>
-              <div style="font-size:10px;color:#4a5568;font-style:italic;line-height:1.4">"This feels authentic — I'd actually stop scrolling for this..."</div>
-            </div>
-            <!-- Works / Doesn't -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-              <div style="background:#f0fdf4;border-radius:4px;padding:6px 8px;border:1px solid #bbf7d0"><div style="font-size:8px;font-weight:700;color:#16a34a">WORKS</div><div style="font-size:9px;color:#4a5568;margin-top:1px">Transparent tone</div></div>
-              <div style="background:#fef2f2;border-radius:4px;padding:6px 8px;border:1px solid #fecaca"><div style="font-size:8px;font-weight:700;color:#dc2626">DOESN'T</div><div style="font-size:9px;color:#4a5568;margin-top:1px">Missing proof</div></div>
-            </div>
+          </div>
+          <div style="background:var(--orange-light);border-left:3px solid var(--orange);border-radius:8px;padding:10px 12px;margin-bottom:10px">
+            <div style="font-size:9px;font-weight:700;color:var(--orange);text-transform:uppercase;margin-bottom:2px">First Reaction</div>
+            <div style="font-size:11px;color:var(--text2);font-style:italic">"This feels authentic — I'd actually stop scrolling for this..."</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <div style="flex:1;background:var(--green-light);border-radius:6px;padding:8px"><div style="font-size:8px;font-weight:700;color:var(--green)">WORKS</div><div style="font-size:10px;color:var(--text3);margin-top:2px">Transparent tone...</div></div>
+            <div style="flex:1;background:var(--red-light);border-radius:6px;padding:8px"><div style="font-size:8px;font-weight:700;color:var(--red)">DOESN'T</div><div style="font-size:10px;color:var(--text3);margin-top:2px">Missing proof...</div></div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- METRICS STRIP -->
-      <div style="background:#ffffff;border-radius:12px;border:1px solid #e8ecf0;padding:16px 8px;margin:24px 24px 0;display:grid;grid-template-columns:repeat(6,1fr)">
-        <div style="text-align:center;padding:8px 12px;border-right:1px solid #f0f2f5">
-          <div style="font-size:22px;font-weight:800;color:#F15B40">60%</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:3px;line-height:1.3">Less time on persona research</div>
+    <!-- Features -->
+    <div id="landingFeatures" style="max-width:1200px;margin:0 auto;padding:60px 32px;width:100%">
+      <div style="text-align:center;margin-bottom:40px">
+        <h2 style="font-size:28px;font-weight:800;color:var(--text);margin-bottom:8px">How It Works</h2>
+        <p style="font-size:15px;color:var(--text2)">Three AI agents working together to predict creative performance</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:48px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow);border-top:3px solid var(--orange)">
+          <div style="width:40px;height:40px;border-radius:10px;background:var(--orange-light);display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px">&#129489;</div>
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;color:var(--text)">Persona Agent</h3>
+          <p style="font-size:13px;color:var(--text2);line-height:1.6">Transforms CDP segment data into psychologically rich synthetic personas. Not generic profiles — deeply specific personas grounded in real behavioral data, satisfaction scores, and channel preferences.</p>
         </div>
-        <div style="text-align:center;padding:8px 12px;border-right:1px solid #f0f2f5">
-          <div style="font-size:22px;font-weight:800;color:#082340">40%</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:3px;line-height:1.3">More accurate targeting</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow);border-top:3px solid var(--orange)">
+          <div style="width:40px;height:40px;border-radius:10px;background:var(--orange-light);display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px">&#128202;</div>
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;color:var(--text)">Evaluation Agent</h3>
+          <p style="font-size:13px;color:var(--text2);line-height:1.6">Tests every creative against each persona across five dimensions — Relevance, Emotional Resonance, Clarity, Trust, and Action Likelihood — with detailed reasoning explaining every score.</p>
         </div>
-        <div style="text-align:center;padding:8px 12px;border-right:1px solid #f0f2f5">
-          <div style="font-size:22px;font-weight:800;color:#F15B40">3×</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:3px;line-height:1.3">Faster creative iteration</div>
-        </div>
-        <div style="text-align:center;padding:8px 12px;border-right:1px solid #f0f2f5">
-          <div style="font-size:22px;font-weight:800;color:#16a34a">+20%</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:3px;line-height:1.3">Engagement via better copy</div>
-        </div>
-        <div style="text-align:center;padding:8px 12px;border-right:1px solid #f0f2f5">
-          <div style="font-size:22px;font-weight:800;color:#082340">50%</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:3px;line-height:1.3">Faster A/B decisions</div>
-        </div>
-        <div style="text-align:center;padding:8px 12px">
-          <div style="font-size:22px;font-weight:800;color:#F15B40">5</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:3px;line-height:1.3">Evaluation dimensions</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow);border-top:3px solid var(--orange)">
+          <div style="width:40px;height:40px;border-radius:10px;background:var(--orange-light);display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px">&#128172;</div>
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;color:var(--text)">Research Agent</h3>
+          <p style="font-size:13px;color:var(--text2);line-height:1.6">Ask follow-up questions after experiments. "Why did this segment reject the ad?" or "Rewrite the headline for Near-Retirees." Gets specific, evidence-based answers grounded in your data.</p>
         </div>
       </div>
 
-      <!-- DESCRIPTION + USE CASES -->
-      <div id="landingFeatures" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 24px 0">
-        <div style="background:#ffffff;border:1px solid #e8ecf0;border-radius:12px;padding:24px">
-          <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#F15B40;text-transform:uppercase;margin-bottom:10px">About This Accelerator</div>
-          <h3 style="font-size:17px;font-weight:800;color:#082340;margin-bottom:12px;letter-spacing:-0.3px">What is Foresight Studio?</h3>
-          <p style="font-size:13px;color:#475569;line-height:1.75;margin-bottom:12px">Foresight Studio is a pre-built AI accelerator within the <strong style="color:#082340">Xperion Marketplace</strong> — purpose-built for marketing teams to validate creative assets before campaign launch.</p>
-          <p style="font-size:13px;color:#475569;line-height:1.75;margin-bottom:12px">It transforms raw CDP segment data from <strong style="color:#082340">your customer data platform</strong> into synthetic personas, then evaluates your creative across five dimensions — returning resonance scores, rewrite suggestions, and full qualitative reasoning per persona.</p>
-          <p style="font-size:13px;color:#475569;line-height:1.75">From creative brief to predictive performance data in <strong style="color:#082340">minutes, not weeks</strong> — no focus groups, no production A/B tests needed.</p>
+      <!-- Capabilities -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:48px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;gap:14px;align-items:flex-start;box-shadow:var(--shadow)">
+          <div style="font-size:20px;flex-shrink:0">&#9878;</div>
+          <div><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">A/B Comparison</div><div style="font-size:12px;color:var(--text2);line-height:1.5">Test two variants head-to-head. See which wins per segment with dimension-level breakdowns.</div></div>
         </div>
-        <div style="background:#ffffff;border:1px solid #e8ecf0;border-radius:12px;padding:24px">
-          <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#F15B40;text-transform:uppercase;margin-bottom:10px">Industry Use Cases</div>
-          <h3 style="font-size:17px;font-weight:800;color:#082340;margin-bottom:16px;letter-spacing:-0.3px">Built for FSI & Airlines</h3>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:#fafbfc;border-radius:8px;border-left:3px solid #F15B40">
-              <span style="font-size:18px;flex-shrink:0">🏦</span>
-              <div><div style="font-size:13px;font-weight:700;color:#082340;margin-bottom:2px">Financial Services</div><div style="font-size:12px;color:#64748b;line-height:1.5">Test loan, insurance, and investment product messaging against wealth segments — Near-Retirees, Young Professionals, Affluent Families.</div></div>
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:#fafbfc;border-radius:8px;border-left:3px solid #082340">
-              <span style="font-size:18px;flex-shrink:0">✈️</span>
-              <div><div style="font-size:13px;font-weight:700;color:#082340;margin-bottom:2px">Airlines & Travel</div><div style="font-size:12px;color:#64748b;line-height:1.5">Evaluate loyalty comms, ancillary upsell emails, and re-engagement campaigns across frequent flyer segments.</div></div>
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:#fafbfc;border-radius:8px;border-left:3px solid #16a34a">
-              <span style="font-size:18px;flex-shrink:0">📱</span>
-              <div><div style="font-size:13px;font-weight:700;color:#082340;margin-bottom:2px">Multi-Channel Creative</div><div style="font-size:12px;color:#64748b;line-height:1.5">Supports Digital Ads, Email Campaigns, and Landing Pages — test the same message across all formats.</div></div>
-            </div>
-          </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;gap:14px;align-items:flex-start;box-shadow:var(--shadow)">
+          <div style="font-size:20px;flex-shrink:0">&#128451;</div>
+          <div><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">CDP Integration</div><div style="font-size:12px;color:var(--text2);line-height:1.5">Build personas from AEP segment exports. CSV paste or cloud storage connector (S3, Azure, GCS).</div></div>
         </div>
-      </div>
-
-      <!-- AGENT PIPELINE -->
-      <div style="background:#ffffff;border:1px solid #e8ecf0;border-radius:12px;overflow:hidden;margin:20px 24px 0">
-        <div style="padding:20px 24px;border-bottom:1px solid #f0f2f5">
-          <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#F15B40;text-transform:uppercase;margin-bottom:4px">How It Works</div>
-          <h2 style="font-size:17px;font-weight:800;color:#082340;letter-spacing:-0.3px">Three AI Agents Working in Concert</h2>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;gap:14px;align-items:flex-start;box-shadow:var(--shadow)">
+          <div style="font-size:20px;flex-shrink:0">&#128200;</div>
+          <div><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Experiment History</div><div style="font-size:12px;color:var(--text2);line-height:1.5">Every experiment saved with full results. Track score trends and build institutional knowledge over time.</div></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr">
-          <div style="padding:24px;transition:background 0.2s;cursor:default" onmouseover="this.style.background='#fef6f4'" onmouseout="this.style.background='transparent'">
-            <div style="width:40px;height:40px;background:#fff4f1;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:20px">🧑</div>
-            <div style="font-size:10px;font-weight:700;color:#F15B40;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">Agent 01</div>
-            <div style="font-size:14px;font-weight:700;color:#082340;margin-bottom:8px">Persona Agent</div>
-            <div style="font-size:12px;color:#64748b;line-height:1.6">Transforms CDP segment data into psychologically rich synthetic personas grounded in real behavioral data and satisfaction scores.</div>
-            <div style="margin-top:10px;font-size:11px;font-weight:600;color:#94a3b8">→ Single Customer 360 View</div>
-          </div>
-          <div style="display:flex;align-items:center;padding:0 4px;color:#e2e8f0;font-size:16px">▸</div>
-          <div style="padding:24px;border-left:1px solid #f0f2f5;border-right:1px solid #f0f2f5;transition:background 0.2s;cursor:default" onmouseover="this.style.background='#fef6f4'" onmouseout="this.style.background='transparent'">
-            <div style="width:40px;height:40px;background:#fff4f1;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:20px">📊</div>
-            <div style="font-size:10px;font-weight:700;color:#F15B40;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">Agent 02</div>
-            <div style="font-size:14px;font-weight:700;color:#082340;margin-bottom:8px">Evaluation Agent</div>
-            <div style="font-size:12px;color:#64748b;line-height:1.6">Tests every creative across 5 dimensions — Relevance, Emotional Resonance, Clarity, Trust, Action Likelihood — with per-score reasoning.</div>
-            <div style="margin-top:10px;font-size:11px;font-weight:600;color:#94a3b8">→ 40% More Accurate Targeting</div>
-          </div>
-          <div style="display:flex;align-items:center;padding:0 4px;color:#e2e8f0;font-size:16px">▸</div>
-          <div style="padding:24px;transition:background 0.2s;cursor:default" onmouseover="this.style.background='#fef6f4'" onmouseout="this.style.background='transparent'">
-            <div style="width:40px;height:40px;background:#fff4f1;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:20px">💬</div>
-            <div style="font-size:10px;font-weight:700;color:#F15B40;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">Agent 03</div>
-            <div style="font-size:14px;font-weight:700;color:#082340;margin-bottom:8px">Research Agent</div>
-            <div style="font-size:12px;color:#64748b;line-height:1.6">Ask follow-up questions after experiments. Gets specific, evidence-based answers grounded in your actual experiment data and scores.</div>
-            <div style="margin-top:10px;font-size:11px;font-weight:600;color:#94a3b8">→ 60% Faster Creative Ops</div>
-          </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;gap:14px;align-items:flex-start;box-shadow:var(--shadow)">
+          <div style="font-size:20px;flex-shrink:0">&#128196;</div>
+          <div><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Export Reports</div><div style="font-size:12px;color:var(--text2);line-height:1.5">Generate branded PDF reports with heatmaps and detailed evaluations. Share with stakeholders instantly.</div></div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;gap:14px;align-items:flex-start;box-shadow:var(--shadow);border:2px solid rgba(241,91,64,0.2)">
+          <div style="font-size:20px;flex-shrink:0">&#128218;</div>
+          <div><div style="font-size:14px;font-weight:700;color:var(--orange);margin-bottom:4px">Demo Library</div><div style="font-size:12px;color:var(--text2);line-height:1.5">Preloaded creatives and personas for Airlines and Banking. One click to load, one click to test.</div></div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;gap:14px;align-items:flex-start;box-shadow:var(--shadow)">
+          <div style="font-size:20px;flex-shrink:0">&#9881;</div>
+          <div><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Multi-Format Testing</div><div style="font-size:12px;color:var(--text2);line-height:1.5">Test digital ads, email campaigns, and landing pages — each with format-specific evaluation criteria.</div></div>
         </div>
       </div>
 
-      <!-- CAPABILITIES + BOTTOM CTA -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 24px 0">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div style="background:#ffffff;border:1px solid #e8ecf0;border-radius:10px;padding:16px;display:flex;gap:10px">
-            <span style="font-size:18px;flex-shrink:0">⚖️</span>
-            <div><div style="font-size:13px;font-weight:700;color:#082340;margin-bottom:3px">A/B Comparison</div><div style="font-size:11px;color:#64748b;line-height:1.5">Test two variants head-to-head with dimension-level breakdowns.</div></div>
-          </div>
-          <div style="background:#ffffff;border:1px solid #e8ecf0;border-radius:10px;padding:16px;display:flex;gap:10px">
-            <span style="font-size:18px;flex-shrink:0">🗄️</span>
-            <div><div style="font-size:13px;font-weight:700;color:#082340;margin-bottom:3px">CDP Ingestion</div><div style="font-size:11px;color:#64748b;line-height:1.5">Connect S3, Azure, GCS. Pull real AEP segment exports.</div></div>
-          </div>
-          <div style="background:#ffffff;border:1px solid #e8ecf0;border-radius:10px;padding:16px;display:flex;gap:10px">
-            <span style="font-size:18px;flex-shrink:0">📈</span>
-            <div><div style="font-size:13px;font-weight:700;color:#082340;margin-bottom:3px">Experiment History</div><div style="font-size:11px;color:#64748b;line-height:1.5">Track 50 experiments with score trend charts.</div></div>
-          </div>
-          <div style="background:#ffffff;border:1px solid #e8ecf0;border-radius:10px;padding:16px;display:flex;gap:10px">
-            <span style="font-size:18px;flex-shrink:0">📄</span>
-            <div><div style="font-size:13px;font-weight:700;color:#082340;margin-bottom:3px">Report Export</div><div style="font-size:11px;color:#64748b;line-height:1.5">Branded PDF/HTML reports for client presentations.</div></div>
-          </div>
-        </div>
-        <!-- Bottom CTA -->
-        <div style="background:linear-gradient(120deg,#082340 0%,#0d3a6b 60%,#1a3a50 100%);border-radius:12px;padding:28px 28px;display:flex;flex-direction:column;justify-content:center">
-          <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(241,91,64,0.9);text-transform:uppercase;margin-bottom:8px">Xperion Marketplace</div>
-          <div style="font-size:20px;font-weight:800;color:#ffffff;margin-bottom:8px;letter-spacing:-0.3px">Launch Foresight Studio</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:20px;line-height:1.5">Part of Coforge's Xperion Accelerator Marketplace<br> · your customer data platform</div>
-          <button onclick="launchApp()" style="background:#F15B40;color:#fff;border:none;padding:13px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;align-self:flex-start;transition:all 0.2s" onmouseover="this.style.background='#e04a30'" onmouseout="this.style.background='#F15B40'">Launch Studio →</button>
-        </div>
+      <!-- CTA -->
+      <div style="text-align:center;padding:40px;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow)">
+        <h2 style="font-size:24px;font-weight:800;color:var(--text);margin-bottom:8px">Ready to test your creative?</h2>
+        <p style="font-size:14px;color:var(--text2);margin-bottom:20px">Launch experiments in minutes, not weeks. No setup required.</p>
+        <button class="btn btn-accent" style="padding:14px 40px;font-size:16px" onclick="launchApp()">Launch Studio &#8594;</button>
       </div>
 
       <!-- Footer -->
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 24px 24px;border-top:1px solid #e8ecf0;margin:0 24px">
-        <div style="font-size:11px;color:#94a3b8">© 2025 Coforge · Xperion Platform · Foresight Studio</div>
-        <div style="font-size:11px;color:#94a3b8"> · your customer data platform</div>
+      <div style="text-align:center;padding:32px 0;font-size:12px;color:var(--text3)">
+        Foresight Studio — Predict Creative Performance Before Launch
       </div>
-
-    </div><!-- /page content -->
+    </div>
   </div>
 </div>
 
 <div class="app hid" id="app">
   <!-- NAV -->
   <div class="nav">
-    <div class="logo" style="cursor:pointer;gap:0" onclick="document.getElementById('app').classList.add('hid');document.getElementById('landingPage').classList.remove('hid');window.scrollTo(0,0)">
-      <div style="display:flex;align-items:center;gap:12px">
-        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFcAAAAbCAYAAAAJUhN7AAAHxUlEQVR4nO2YeVBV1x3HP/fde9/CY1HAFVQCKMF9Ka5xR7FuaIOxOEqjWYzEWKeaumQ6ZtO0MTMR2zE6Wm20SlVmJMmIdasardG6JalL3VAWBUTZBB7vXd49/YMKwYflPQXaar//3Dnn/M7v+zvfe87v/u6RhBCC/6NRYPhPB/A045kSV5SXNSnfMyVuxba16EX3mozvmRFXOOxUfnMIR1pKk3E+G+I6ndjW/BpRXoZj9w60syeahFZ6mqsFPS8H7eRhtCN/Rr+dWTNgsqD0jEIdNAo16oVG43+qd67kH4ChbXvwa167X1UxtGqLIaBl4/K7tXOFAEl6fJYnnf+EEJUa9h0bcXz1J7B4YV2WhNwhvNF56925elEBpQsScF4467FzUVKE7XcfUpG8/rGCayhIioop7mUk/xaY4mY1urAPSj6l3sC8fTE814my5QtRBkVjHDUROTQCSVEf4VkgigrRTh3BnroNbKVYP/ysQYN/HEhGE8qgaNQBwxqfy8ta9XQnLej38imd91PQdQQgtw5CjuyOoV0ohuYBYFAQ5aXoOdk4r15Ev3YRoTkAMMXNxPRiQqMuxl0IzYGkGpuMr96dC2AIaIE6YjzagS+RAD33Fnrurfon+jXHGD2hunng2Gly7rgW8aoi07tbBB1DgpF+kJuFEFy9kUXaoRPczs1HkRU6dwph9JC+tAys+UiVltnYtfdrAKZOGElZuY20g8f57tI1vMxmXomfgKoq7D96CkWWiY+NruEAsm/l8fXJb7mcnkWZzYa3lxc9O4cxuF9PAv2bVdvaKux8uf8YDq2SuB8PQxeCY6e+4+TZi5SUlRES1JrYmMG0a9sK8KAUc2alU7roVSQPKjd19CQsM39e3R4/820OHj1dp60kSUweM4QNK5dgMZu4W1jEjLfe5/CJcy62FrOJ3yxN5LVpEwHIzrlDx8FTAVg4O57fbkrB7tCq7XeuW46P1cKY6b/AaFQpvrgPAIemMf/dJDbv3INT1114vCwmFrwez5K5CUiSxN2CYiKHxVNabuNnU8aSnLofh6bVmuNttbBm+UKmjB/h3s4FkIOfw+DfAnHvjrtTUHv1q93xr/cSHzuKsSMGVHUJwdX0LD5as4XUvUeZPX0Sg/v2YP6yJA6fOEfLQH8+XjqHHl064nBoHP7mLCvXJjP/3SQiQtsxpH+vWhSfrEtmUFR3EhN+QmTHEAoKiwntEMSV9Ewexifrktm0fTeyLLMocToxQ/vh39yXuwXFbN21ly0pe/gg6Q+EhwTz0oSRteZ+vjONqB6RJMSNoXe3CAqL7rNoxRouXLnB6o07PRMXSULp3Avt6F737A0GpJZtH/JR9egeGUbcuOHV3ZWVTrZ9sY/rGbfJyy/g2wtX2LXnCN5WC5tXvUNo+2AArBYLk8cM40ZmDmv/mMqq3+9wEffjpYnMnRlXK70ALuLaHRpbUqrWsmLR68yb9VL1WEQoDOzTFV8fb5I2bGfl2m0u4ia9N5/Xpk2sxfPGjEm89atPycsvANzMuQ9gCAh021YymjBYfeocS0k7xPWMqpytC8GtnDvczM5FVRUiQttz6VoGuhCUlVcQO2uxy3xdrzoCD3z8EFNjo12ErQsl98u4W1AIwPCBfVzjlySG9e9J0obtXE7P4OHsGT04yoXHy2IGqg+oZ+JiNLlva5BBrtv9me8vc+b7y9VtSZJo3cKfd+a9TLfIMLJz8wHw9rIwJ2EyFkvdvP5+vu7H8xBMRhWrl5nSchs3s3Lo9nyYi03m7TwAglq1cMunRG2xPRJX2CvcN9adUKnVObQ4cTqvxNdUEYosE+jfDEWRAXghqjsBzf0oKCrBoVWy5M0ZmM01AtsqKjh++jzhIcGehF8LPt5e9O/VlS/2H2Xxis8IadeGzp1CkQ0SQggOnzjH+59uAuDFscPcOg0PwyNx9bzbbtsKhx1hK0dq5u8y5ufrTXCbR//X+/pYWfvR28xZspJVG7bz+c49hHVoi8ViprC4hIzsXO6XlnNw+2o6BLf2ZAnVkCSJ5Ytm84/0TC5fz2DQ5Ddo37YlPt5WCgqLybxd9eEe0Kcrv0yc/lgc7ovrrMR5/ZL7nnUdZ9YNDG1qdtePuj2PYpBpH9Sq3unjowfRJSKUzSlpHDh6mvyCInRdx2ox069nF/r37kxY+yAAzCYjMUOrKhNZluv059/Ml5ih/VCUmiWHhQTxt6/WszV1Pym7D5F1K5e7BcV4WUyMGzmQKeOGExszBLOp6sfDqCqMHBxFRYUdo+oqXZtWgcQM7Uegvx/gQZ1befUi5cvmVl3CuAl15Hgsry5w2/5REELg0CoRQkeWZRRZfqxjWh+HVulE151IBgMm9RG/9x7A7StHbV+qR8ICaH89iF5S5GFIrpAkCZNRxWwyoSpKgwv7gMOoKphNpgYRFtxMC3puNtrxv1S3DR3CUXr1xdAhHENAayTZgF52Hz3rJs4r53FeOIsovQ8VNuypW7EkvNkgwf6vof604KykfPUHOP9+BmXIaIyjJyG3afdv72f1kiKc589hT9mInp9XdX8aHtnQsf/Xo15x9aICbEnvYZ4+Bzk0wqNLb6E5sCevB7/mmGOnPXGwTwphr0AymRufp+w+ktXHvQ+aEOLx85wQCGiUPOlxKHY7GI1NFss/ASbx1abu83PcAAAAAElFTkSuQmCC" alt="Xperion" style="width:87px;height:27px;display:block;flex-shrink:0">
-        <div style="width:1px;height:18px;background:#d8dde6"></div>
-        <span style="font-size:14px;font-weight:500;color:#173052;letter-spacing:-0.1px;line-height:1">Foresight Studio</span>
-      </div>
+    <div class="logo" style="cursor:pointer" onclick="document.getElementById('app').classList.add('hid');document.getElementById('landingPage').classList.remove('hid');window.scrollTo(0,0)">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" width="200" height="40" style="display:block">
+        <defs><linearGradient id="lgI" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#082340"/><stop offset="100%" stop-color="#0d3a6b"/></linearGradient><linearGradient id="lgA" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#F15B40"/><stop offset="100%" stop-color="#ff7a5c"/></linearGradient></defs>
+        <rect x="0" y="4" width="40" height="40" rx="10" fill="url(#lgI)"/>
+        <path d="M14 14 L28 24 L14 34 Z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" opacity="0.9"/>
+        <line x1="28" y1="24" x2="36" y2="16" stroke="url(#lgA)" stroke-width="2" stroke-linecap="round"/>
+        <line x1="28" y1="24" x2="36" y2="24" stroke="url(#lgA)" stroke-width="2" stroke-linecap="round"/>
+        <line x1="28" y1="24" x2="36" y2="32" stroke="url(#lgA)" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="28" cy="24" r="2" fill="#F15B40"/>
+        <text x="52" y="26" font-family="Inter,system-ui,sans-serif" font-size="19" font-weight="700" fill="#082340" letter-spacing="-0.5">Foresight</text>
+        <text x="156" y="26" font-family="Inter,system-ui,sans-serif" font-size="19" font-weight="700" fill="#F15B40" letter-spacing="-0.5">Studio</text>
+        <text x="52" y="40" font-family="Inter,system-ui,sans-serif" font-size="9" font-weight="500" fill="#8898aa" letter-spacing="0.5">PREDICT CREATIVE PERFORMANCE BEFORE LAUNCH</text>
+      </svg>
     </div>
     <div style="display:flex;align-items:center;gap:16px">
       <button class="btn btn-ghost btn-sm" onclick="showHistory()" id="histBtn" style="display:none">History <span id="histCount" style="background:var(--accent);color:#fff;padding:1px 7px;border-radius:10px;font-size:10px;margin-left:4px"></span></button>
-      <div style="display:flex;align-items:center;gap:10px">
-      <button onclick="document.getElementById('app').classList.add('hid');document.getElementById('landingPage').classList.remove('hid');window.scrollTo(0,0);" style="background:none;border:1px solid var(--border2);border-radius:var(--radius-xs);padding:6px 14px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.borderColor='var(--orange)';this.style.color='var(--orange)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">&#8592; Home</button>
       <div class="nav-status"><div class="status-dot" id="navDot"></div><span id="navStatus">Initializing...</span></div>
-    </div>
     </div>
   </div>
 
@@ -590,67 +487,98 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
 
 <script>
 var PRESETS=[
-  {id:"yp",name:"Young Professional",segment:"Ages 25-34, Urban, $60K-$100K",profile:"You are a 29-year-old marketing manager in a metro city earning $80K/year. You have student loans, a small emergency fund, and just started thinking about investing. You use mobile banking daily, follow finance influencers, and are skeptical of traditional bank marketing. You respond to authentic, transparent, tech-forward brands. Your biggest anxiety is falling behind peers on wealth building.",preset:true},
-  {id:"af",name:"Affluent Family",segment:"Ages 38-50, Suburban, $150K-$300K",profile:"You are a 44-year-old dual-income suburban household. Combined income around 220K with a mortgage, two kids aged 8 and 12, and 529 plans. You care deeply about college funding, retirement, and protecting what you have built. You are time-poor and decision-fatigued. You respond to competence, specificity, and proof.",preset:true},
-  {id:"nr",name:"Near-Retiree",segment:"Ages 55-65, Mixed, $100K-$250K",profile:"You are a 59-year-old professional planning to retire in 5-7 years. You have substantial savings but constant anxiety about whether it is enough. You are shifting from growth to preservation. You distrust flashy marketing and prefer substance over style. You want specifics, credentials, and evidence.",preset:true},
-  {id:"sb",name:"Small Business Owner",segment:"Ages 30-55, Revenue $500K-$5M",profile:"You are a 41-year-old owner of a services business with 15 employees and around 2M revenue. Cash flow management is your constant headache. You want a financial partner who understands seasonal revenue. You are pragmatic, time-starved, and deeply skeptical of marketing promises.",preset:true}
+  {id:"yp",name:"Young Professional",segment:"Ages 25-34, Urban, $60K-$100K",profile:"You are a 29-year-old marketing manager in a metro city earning $80K/year. You have student loans, a small emergency fund, and just started thinking about investing. You use mobile banking daily, follow finance influencers, and are skeptical of traditional bank marketing. You respond to authentic, transparent, tech-forward brands. Your biggest anxiety is falling behind peers on wealth building.",preset:true,industry:"banking"},
+  {id:"af",name:"Affluent Family",segment:"Ages 38-50, Suburban, $150K-$300K",profile:"You are a 44-year-old dual-income suburban household. Combined income around 220K with a mortgage, two kids aged 8 and 12, and 529 plans. You care deeply about college funding, retirement, and protecting what you have built. You are time-poor and decision-fatigued. You respond to competence, specificity, and proof.",preset:true,industry:"banking"},
+  {id:"nr",name:"Near-Retiree",segment:"Ages 55-65, Mixed, $100K-$250K",profile:"You are a 59-year-old professional planning to retire in 5-7 years. You have substantial savings but constant anxiety about whether it is enough. You are shifting from growth to preservation. You distrust flashy marketing and prefer substance over style. You want specifics, credentials, and evidence.",preset:true,industry:"banking"},
+  {id:"sb",name:"Small Business Owner",segment:"Ages 30-55, Revenue $500K-$5M",profile:"You are a 41-year-old owner of a services business with 15 employees and around 2M revenue. Cash flow management is your constant headache. You want a financial partner who understands seasonal revenue. You are pragmatic, time-starved, and deeply skeptical of marketing promises.",preset:true,industry:"banking"}
 ];
+
+// ── INDUSTRY DEMO PERSONAS ──
+var DEMO_PERSONAS={
+  "airline":[
+    {id:"dp_air1",name:"Elite Road Warrior",segment:"Platinum, 38+ flights/yr, Business Class",profile:"You are a 44-year-old senior executive who flies 38+ times a year, mostly business class on hub routes like JFK-LHR and SFO-NRT. You are Platinum tier with 780K points and deeply embedded in the loyalty ecosystem. You respond only to exclusivity messaging and ignore mass promos. Your biggest frustrations are inconsistent upgrades, WiFi reliability at altitude, and any hint of loyalty program devaluation. You value on-time performance, crew professionalism, and seamless rebooking above all else. If marketing feels generic, you delete it instantly.",preset:true,industry:"airline"},
+    {id:"dp_air2",name:"Status Chaser",segment:"Gold/Silver, 15 flights/yr, Growth Potential",profile:"You are a 31-year-old professional in a secondary city like Austin or Denver, flying about 15 times a year split between business and leisure. You are Gold tier but anxious about maintaining status. You book 58% through the app and 24% through OTAs when you find better prices. You respond strongly to gamification, progress-toward-status messaging, and challenges. Your biggest pain point is the unclear path to next tier and OTA price undercutting. You actively compare airlines on Google Flights for every booking and post travel content on Instagram.",preset:true,industry:"airline"},
+    {id:"dp_air3",name:"Family Vacationer",segment:"Blue tier, 3 flights/yr, Price Sensitive",profile:"You are a 41-year-old parent in suburban Atlanta or Detroit, flying about 3 times a year with your family of 4-5 during school breaks only. You book 58% through OTAs hunting for the cheapest fare and have zero brand loyalty. You only open emails with specific dollar amounts off. Your biggest rage point is paying seat selection fees just to sit next to your own children. You avoid all ancillaries unless forced, bring your own snacks, and your spouse makes the final booking decision. If an ad does not lead with price, you scroll past.",preset:true,industry:"airline"},
+    {id:"dp_air4",name:"Premium Leisure Retiree",segment:"Silver (under-tiered), Business Class leisure",profile:"You are a 68-year-old retiree traveling as a couple 6-8 times a year, always business class for long-haul. You spend heavily on ancillaries but are only Silver tier, which frustrates you. You book 52% on the airline website and 34% by phone, and you do NOT respond to digital advertising at all. You respond to phone calls from named advisors, direct mail, and email only if it comes from a real person. You find app-only features frustrating, kiosk UI too small, and millennial-focused marketing alienating. You are considering luxury cruises as an alternative.",preset:true,industry:"airline"},
+    {id:"dp_air5",name:"Digital Nomad Explorer",segment:"Silver, 18+ flights/yr, One-way booker",profile:"You are a 26-year-old freelancer with no fixed home base, rotating between Lisbon, Bali, Mexico City, and Bangkok. You fly 18+ times a year but always economy, booking one-way tickets on your phone at random hours across time zones. You have near-zero brand loyalty and will switch airlines for a 15% saving. You use Revolut and Apple Pay, hate corporate marketing tone, and respond only to short-form video content and transparent no-BS pricing. You create travel content for your 8K Instagram followers and share deals in WhatsApp groups.",preset:true,industry:"airline"}
+  ],
+  "banking":[
+    {id:"dp_bnk1",name:"Digital-First Millennial",segment:"Ages 25-32, Urban, Salary $55K-$90K",profile:"You are a 28-year-old professional in a metro city earning about 70K. You do all banking on your phone and have never visited a branch. You have a checking account and a basic savings but no investments. Your NPS is 52 — you find the bank functional but uninspiring. You respond to fintech-style messaging that feels peer-to-peer, not institutional. You follow finance influencers and distrust any ad that sounds like a bank wrote it. Your biggest anxiety is not saving enough compared to friends.",preset:true,industry:"banking"},
+    {id:"dp_bnk2",name:"Wealth Builder",segment:"Ages 35-48, Dual Income, $150K-$250K HHI",profile:"You are a 42-year-old dual-income household earning about 200K combined. You have a mortgage, 529 plans, a brokerage account, and a financial advisor you meet annually. Your NPS is 68 and you value competence, specificity, and integrated views across all your accounts. You are time-poor and want the bank to show it understands your specific situation. Generic grow your wealth messaging feels lazy. You respond to proof, peer data, and concrete benefit comparisons.",preset:true,industry:"banking"},
+    {id:"dp_bnk3",name:"Cautious Pre-Retiree",segment:"Ages 55-65, Preservation mindset, $100K-$200K",profile:"You are a 60-year-old professional 5 years from retirement. You have substantial savings but constant anxiety about market downturns, healthcare costs, and outliving your money. You distrust flashy digital marketing and want substance — specific rates, credentials, FDIC mentions, and human expertise. You prefer phone or in-branch for important decisions. You read financial content very carefully and are put off by oversimplification. If a message does not have specific numbers, you ignore it.",preset:true,industry:"banking"},
+    {id:"dp_bnk4",name:"Gig Economy Worker",segment:"Ages 24-35, Variable income, Underbanked",profile:"You are a 29-year-old gig worker with variable monthly income between 2K and 6K. You use a mix of traditional banking and fintech apps. Overdraft fees are your biggest pain point and you distrust banks that profit from your instability. You want tools that help smooth income variability — early pay access, smart budgeting, and fee-free overdraft. You respond to messaging that acknowledges the reality of irregular income without being patronizing.",preset:true,industry:"banking"},
+    {id:"dp_bnk5",name:"Small Business Owner",segment:"Ages 32-50, Revenue $300K-$3M, Cash flow focused",profile:"You are a 39-year-old business owner with 8 employees and about 1.2M revenue. You blur personal and business finances and need flexible credit lines. You are frustrated that banks treat you like either a consumer or a large enterprise. Cash flow visibility is your constant headache. You want real-time balance alerts, easier expense management, and a relationship manager who actually understands seasonal business patterns. Generic we support small business messaging insults your intelligence.",preset:true,industry:"banking"}
+  ]
+};
+
+// ── DEMO CREATIVES ──
+var DEMO_CREATIVES={
+  "airline":{
+    "digital-ad":[
+      {name:"Emotional / Aspirational",data:{headline:"Turn Delays Into Better Journeys.",body:"When plans change, the right airline should do more than inform you. Our intelligent travel experience keeps you updated in real time, offers smart rebooking options, and helps you get back to enjoying the journey with less stress and more confidence.",cta:"See My Options",visual:"A traveler at an airport receives a calm, personalized notification with a new flight option, lounge access, and meal voucher while watching the sunset through terminal windows."}},
+      {name:"Rational / Value-Driven",data:{headline:"More Room. More Flexibility. Same Smart Fare.",body:"Choose an airfare that works harder for you. Compare baggage, seat selection, flight change flexibility, and upgrade options in one place so you can book with clarity instead of guesswork.",cta:"Compare Fare Benefits",visual:"A clean comparison panel showing Basic, Smart, and Flex fares with highlighted inclusions for bags, changes, and seat selection."}},
+      {name:"Ancillary Upsell",data:{headline:"Add the Extras Before You Arrive at the Airport.",body:"Pre-book bags, seats, meals, and priority boarding in minutes. Travelers who personalize their trip ahead of time move faster, save more, and fly with less last-minute hassle.",cta:"Customize My Trip",visual:"Mobile app screen with seat map, baggage add-on, and meal selection cards, each marked with easy pre-trip pricing."}},
+      {name:"Loyalty / Premium",data:{headline:"Fly More Rewardingly.",body:"Every trip should take you further. Earn points faster, unlock priority benefits, and get recognized with a loyalty experience built around how often and how far you travel.",cta:"Join the Rewards Program",visual:"Frequent flyer at priority check-in with loyalty tier card on screen and a journey tracker showing points earned toward next status level."}}
+    ],
+    "email":[
+      {name:"Urgency / Rebooking",data:{subject:"Your new flight options are ready",preview:"Choose the best alternate itinerary in a few taps",body:"Your plans changed, but your trip does not have to stall. We have identified alternate flights that best match your schedule and preferences. Review the options now to confirm your preferred itinerary, retain your seat benefits where available, and continue your journey with minimal disruption.",cta:"Review My New Flight Options"}},
+      {name:"Offer / Upsell",data:{subject:"Upgrade to extra legroom before check-in opens",preview:"A few better seats are still available on your upcoming flight",body:"Your upcoming flight is getting close, and a limited number of extra-legroom and preferred seats are still available. Upgrade now for more comfort, earlier boarding, and a smoother airport experience before the best options are gone.",cta:"Upgrade My Seat"}},
+      {name:"Retention / Loyalty",data:{subject:"You are closer to your next reward than you think",preview:"One more trip could unlock your next tier benefit",body:"You have already made strong progress this year. Book one more qualifying trip to move closer to your next loyalty milestone and unlock added privileges like priority services, lounge access opportunities, and bonus earning potential.",cta:"Plan My Next Trip"}},
+      {name:"Cross-Sell / Co-brand Card",data:{subject:"Turn every booking into more miles",preview:"Apply for the airline card and accelerate rewards on travel and everyday spend",body:"From flights and hotels to dining and daily essentials, the right card can help every purchase move you closer to your next trip. Apply now to unlock bonus miles, faster rewards earning, and premium travel benefits designed for frequent flyers.",cta:"See Card Benefits"}}
+    ],
+    "landing":[
+      {name:"Premium Product Launch",data:{hero:"The Smart Way to Fly Better.\nIntroducing FlexPlus — more comfort, more control, and more value with premium seat selection, fast-track options, and travel flexibility built in.",props:"Preferred seats and extra legroom included. One checked bag plus priority boarding. Easier flight changes when plans move. Faster airport journey with premium support.",trust:"Chosen by frequent travelers for comfort and flexibility. Highly rated mobile check-in experience. Transparent fare inclusions with no hidden surprises.",cta:"Book FlexPlus"}},
+      {name:"Loyalty Enrollment",data:{hero:"Every Journey Should Bring You Closer to More.\nJoin our loyalty program to earn points on flights, upgrades, partner spend, and everyday moments that matter.",props:"Earn points across flights and partners. Redeem for seats, upgrades, and travel perks. Track progress to higher tiers. Access exclusive offers for members only.",trust:"Millions of members already enrolled. Easy digital membership card. Seamless earning and redemption across supported journeys.",cta:"Join for Free"}},
+      {name:"Disruption Care",data:{hero:"When Travel Changes, We Move With You.\nA disruption experience designed to keep you informed, rebooked, and supported with real-time options when your journey needs to change.",props:"Real-time notifications and self-service rebooking. Priority care for eligible travelers. Hotel, meal, or voucher assistance where applicable. Faster recovery with smarter routing options.",trust:"Real-time operational updates. Self-service support built into web and app. High traveler satisfaction for proactive journey communication.",cta:"Manage My Journey"}},
+      {name:"Co-brand Card Launch",data:{hero:"A Travel Card Built for People Who Want More Than Miles.\nMeet the Voyager Elite Card — bonus miles, priority boarding, lounge access, and rewards that make every trip feel upgraded.",props:"Large welcome bonus after qualifying spend. Priority boarding on eligible flights. Complimentary lounge passes each year. No foreign transaction fees with flexible rewards redemption.",trust:"Top-rated travel card experience. Strong cardholder reviews. Global payment acceptance and premium support benefits.",cta:"Apply in 2 Minutes"}}
+    ]
+  },
+  "banking":{
+    "digital-ad":[
+      {name:"Emotional / Financial Confidence",data:{headline:"Your Money Should Help You Feel in Control.",body:"Banking should make life easier, not heavier. Our intelligent banking experience helps you save, manage bills, and spot opportunities to improve your financial health so you can move forward with more confidence every day.",cta:"Start My Financial Plan",visual:"A customer relaxing at home while a mobile banking app shows bills paid, savings progress, and a message saying, You are on track this month."}},
+      {name:"Rational / Proof-Driven",data:{headline:"Make Your Savings Work Harder.",body:"Move beyond low-yield accounts. Compare projected earnings, automate savings goals, and see how a smarter account can help your money grow with no unnecessary complexity.",cta:"Calculate My Savings Growth",visual:"Split-screen comparison between a traditional bank account and a smart high-yield savings account with projected annual earnings and goal tracker."}},
+      {name:"Borrowing / Personal Loan",data:{headline:"A Lower-Rate Loan Could Change Your Monthly Budget.",body:"Consolidate balances, fund a major purchase, or create breathing room with a personalized loan offer designed around your profile and repayment comfort.",cta:"Check My Offer",visual:"A loan estimate card on a banking app showing monthly payment, lower rate, and a simplified debt consolidation scenario."}},
+      {name:"Credit Card / Rewards",data:{headline:"Turn Everyday Spend Into Better Rewards.",body:"Earn more from dining, travel, and daily essentials with a card built for modern spending. Smarter controls, better rewards, and insights that help you stay ahead of every statement.",cta:"See Card Benefits",visual:"Premium rewards card beside app screens showing points earned, category spend, and card control settings."}}
+    ],
+    "email":[
+      {name:"Savings / Goal Completion",data:{subject:"You are closer to your savings goal than you think",preview:"A few smart moves this month could get you there faster",body:"You have already built strong momentum. Based on your recent activity, a small recurring transfer could help you reach your savings target sooner without disrupting your usual spending pattern. Set it up in minutes and let automation do the work.",cta:"Automate My Savings"}},
+      {name:"Loan / Pre-Qualified",data:{subject:"You are pre-qualified for a lower-rate personal loan",preview:"Check your tailored offer in minutes",body:"Based on your profile and banking relationship, you may be eligible for a personalized personal loan offer. Whether you want to consolidate debt or cover a planned expense, you can review your rate and repayment estimate quickly before deciding what to do next.",cta:"View My Personalized Offer"}},
+      {name:"Retention / Premium Upgrade",data:{subject:"Unlock priority banking benefits with your account upgrade",preview:"See what added service, rates, and privileges could look like for you",body:"You may now be eligible for an upgraded banking relationship that gives you access to smarter financial tools, priority servicing, and premium benefits. Review what is available and decide whether this next level of banking fits your goals.",cta:"Explore Premier Banking"}},
+      {name:"Security / Trust",data:{subject:"New ways to protect your account are now available",preview:"Turn on instant alerts, card controls, and stronger sign-in options",body:"Your account security matters every day. That is why we have made it easier to enable instant alerts, card controls, and stronger login options directly in the app. Review your settings now to help keep your banking secure and responsive.",cta:"Update My Security Settings"}}
+    ],
+    "landing":[
+      {name:"Premium Banking Launch",data:{hero:"Banking Designed for People Who Expect More.\nIntroducing Premier Wealth Banking — personalized support, premium digital tools, and smarter money management in one relationship.",props:"Priority servicing and tailored guidance. Higher-value savings and wealth insights. Integrated view across current, savings, and investments. Premium travel and lifestyle benefits.",trust:"Trusted by millions of customers. Highly rated mobile banking experience. Strong digital security and service satisfaction scores.",cta:"Upgrade to Premier Banking"}},
+      {name:"Savings Product Launch",data:{hero:"A Smarter Savings Account for Real Goals.\nEarn more, automate more, and see your progress clearly with a savings experience built for modern customers.",props:"Competitive returns with no unnecessary complexity. Goal-based saving tools. Automated transfers and progress views. Fast access to your money when needed.",trust:"Transparent pricing and digital servicing. Strong customer app ratings. Protected deposits subject to applicable scheme rules.",cta:"Open My Savings Account"}},
+      {name:"Mortgage / Home Buying",data:{hero:"Your Next Home Starts With Better Clarity.\nExplore mortgage options, affordability guidance, and expert support in a digital-first journey designed to reduce stress and speed up decision-making.",props:"Pre-qualification guidance in minutes. Competitive mortgage options. Clear affordability view and payment estimates. Expert help when you need it.",trust:"Trusted lending experience. Secure digital application process. Strong customer satisfaction through the home-finance journey.",cta:"Explore My Mortgage Options"}},
+      {name:"Business Banking",data:{hero:"Business Banking That Moves at the Speed of Growth.\nA modern banking platform for businesses that need faster visibility, smoother payments, and smarter control over cash flow.",props:"Real-time account and payment visibility. Easier expense management. Flexible business financing options. Secure digital controls for teams.",trust:"Built for growing businesses. Strong digital servicing reliability. Secure payments and user access controls.",cta:"Open a Business Account"}}
+    ]
+  }
+};
 var FIELDS={"digital-ad":{label:"Digital Ad",items:[{k:"headline",l:"Headline",p:"Your attention-grabbing headline"},{k:"body",l:"Body Copy",p:"Supporting message",t:"area"},{k:"cta",l:"CTA",p:"e.g., Start Saving Smarter"},{k:"visual",l:"Visual Description",p:"Describe the visual concept",t:"area"}]},"email":{label:"Email Campaign",items:[{k:"subject",l:"Subject Line",p:"The subject line"},{k:"preview",l:"Preview Text",p:"Inbox preview"},{k:"body",l:"Email Body",p:"Full body copy",t:"area"},{k:"cta",l:"Primary CTA",p:"e.g., Review Your Plan"}]},"landing":{label:"Landing Page",items:[{k:"hero",l:"Hero Headline",p:"Main headline + subhead",t:"area"},{k:"props",l:"Value Props",p:"Key benefits",t:"area"},{k:"trust",l:"Trust Signals",p:"Social proof, stats",t:"area"},{k:"cta",l:"Primary CTA",p:"e.g., Open Account"}]}};
 var DIMS=["Relevance","Emotional Resonance","Clarity","Trust","Action Likelihood"];
 function esc(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
 function loadCustom(){try{return JSON.parse(localStorage.getItem("fs_personas")||"[]")}catch(e){return[]}}
 function saveCustom(a){localStorage.setItem("fs_personas",JSON.stringify(a))}
-function getAll(){return PRESETS.concat(loadCustom())}
 var S={type:"digital-ad",mode:"single",crA:{},crB:{},sel:["yp","af","nr","sb"],conn:false,resA:[],resB:[],chatHistory:[],cancelled:false};
 
-var _MODEL="claude-sonnet-4-20250514";
 var _AK="";
-var _configSource="none";
-function gk(){return _AK;}
+function gk(){return _AK}
 
-// ── Full key resolution chain (Xperion Skill Pattern) ──
-function resolveKey(){
-  // 1. config.js (injected by GitHub Actions — never committed)
-  if(typeof window.FORESIGHT_KEY==="string"&&window.FORESIGHT_KEY&&window.FORESIGHT_KEY!=="YOUR_LLM_SECRET_KEY_HERE"){
-    _configSource="config";return window.FORESIGHT_KEY;
-  }
-  // 2. localStorage (return visitor who entered key before)
-  var stored=localStorage.getItem("foresight_api_key");
-  if(stored&&stored.length>20&&stored.indexOf("sk-ant")===0){_configSource="localStorage";return stored;}
-  else if(stored){localStorage.removeItem("foresight_api_key");}  // clear invalid cached key
-  // 3. URL ?key=
+// Read key from URL: ?key=sk-ant-...
+function getKeyFromURL(){
   var params=new URLSearchParams(window.location.search);
-  var urlKey=params.get("key");
-  if(urlKey){_configSource="url";localStorage.setItem("foresight_api_key",urlKey);return urlKey;}
-  // 4. URL #key=
-  var hash=window.location.hash;
-  if(hash.indexOf("#key=")===0){var hKey=hash.substring(5);_configSource="hash";localStorage.setItem("foresight_api_key",hKey);return hKey;}
-  // 5. URL ?bkey= (base64 encoded)
-  var bkey=params.get("bkey");
-  if(bkey){try{var dec=atob(bkey);_configSource="base64";localStorage.setItem("foresight_api_key",dec);return dec;}catch(e){}}
-  // 6. No key
-  _configSource="none";return "";
+  return params.get("key")||"";
 }
 
-// ── Launch App (from landing page) ──
-function launchApp(){
-  document.getElementById("landingPage").classList.add("hid");
-  document.getElementById("app").classList.remove("hid");
-  window.scrollTo(0,0);
-  // Re-resolve key in case config.js loaded asynchronously
-  if(!_AK){_AK=resolveKey();}
-  // If already connected from background init — just update nav and go
-  if(S.conn){
-    document.getElementById("navDot").classList.add("on");
-    document.getElementById("navStatus").textContent="AI Engine Ready";
-    updateRunBtn();renderSteps();updateHistBtn();
-  } else {
-    // Connect without ever showing key input card
-    autoConnectSilent();
-  }
-}
+// INIT
+_AK=getKeyFromURL();
+renderTypes();renderFields();renderPersonas();
 
-function exportReport(){
+if(_AK){
+  autoConnect();
+} else {
+  showKeyInput("No API key found in URL. Add ?key=YOUR_KEY to the URL, or enter it below");
+  updateRunBtn();renderSteps();function exportReport(){
   var f=FIELDS[S.type];
   var valid=S.resA.filter(function(x){return x.r.overall>0});
   var avg=valid.length>0?(valid.reduce(function(s,x){return s+x.r.overall},0)/valid.length).toFixed(1):"-";
@@ -787,56 +715,19 @@ function exportReport(){
 }
 
 updateHistBtn();
+}
 
 async function autoConnect(){
   document.getElementById("navStatus").textContent="Connecting...";
-  var ld=document.getElementById("landingDot"),ls=document.getElementById("landingStatus"),lb=document.getElementById("launchBtn"),lt=document.getElementById("launchText");
-  if(ld)ld.style.background="#fbbf24";
-  if(ls)ls.textContent="Connecting...";
-  try{
-    await apiCall("Reply: ok",20);
-    S.conn=true;
-    document.getElementById("navDot").classList.add("on");
-    document.getElementById("navStatus").textContent="AI Engine Ready";
-    if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)";}
-    if(ls)ls.textContent="AI Engine Ready";
-    if(lb){lb.disabled=false;}
-    if(lt){lt.textContent="Launch Studio →";}
+  try{await apiCall("Reply: ok",20);S.conn=true;document.getElementById("navDot").classList.add("on");document.getElementById("navStatus").textContent="AI Engine Ready";
     var ki=document.getElementById("keyInputCard");if(ki)ki.style.display="none";
   }
   catch(e){
     document.getElementById("navStatus").textContent="Connection issue";
-    if(ld)ld.style.background="#dc2626";
-    if(ls)ls.textContent="Connection Failed";
-    if(lb){lb.disabled=false;}
-    if(lt){lt.textContent="Launch Studio →";}
-    // Only show key input if no key was found at all
-    document.getElementById("landingPage").classList.add("hid");
-    document.getElementById("app").classList.remove("hid");
-    if(!_AK){
-      showKeyInput(e.message);
-    } else {
-      // Key exists but API call failed (wrong key or network) — show error inline, pre-fill key
-      showKeyInput("Connection failed: "+e.message);
-    }
+    showKeyInput(e.message);
   }
   updateRunBtn();renderSteps();updateHistBtn();
 }
-
-async function autoConnectSilent(){
-  // Like autoConnect but NEVER shows keyInputCard — used when launching from landing
-  document.getElementById("navStatus").textContent="Connecting...";
-  try{
-    await apiCall("Reply: ok",20);
-    S.conn=true;
-    document.getElementById("navDot").classList.add("on");
-    document.getElementById("navStatus").textContent="AI Engine Ready";
-  } catch(e){
-    document.getElementById("navStatus").textContent="Check connection";
-  }
-  updateRunBtn();renderSteps();updateHistBtn();
-}
-
 
 function showKeyInput(errMsg){
   var card=document.getElementById("keyInputCard");
@@ -844,14 +735,11 @@ function showKeyInput(errMsg){
     card=document.createElement("div");card.id="keyInputCard";
     card.className="glass-card card-glow";
     card.style.borderColor="rgba(27,20,100,0.15)";
-    card.innerHTML='<h3 style="color:var(--accent2);font-size:13px;margin-bottom:8px">&#128273; Authentication Required</h3><p class="desc" id="keyErrMsg"></p><div class="row" style="align-items:flex-end"><div style="flex:3"><label>API Key</label><div style="position:relative"><input type="password" id="manualKey" placeholder="sk-ant-api03-..." style="font-size:12px"/><button onclick="toggleManualKey()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer" id="mkToggle">show</button></div></div><div style="flex:0"><button class="btn btn-accent btn-sm" onclick="retryWithKey()">Connect</button></div></div><p style="font-size:11px;color:var(--text3);margin-top:10px">Your key will be remembered for next time automatically.</p>';
+    card.innerHTML='<h3 style="color:var(--accent2);font-size:13px;margin-bottom:8px">&#128273; Authentication Required</h3><p class="desc" id="keyErrMsg"></p><div class="row" style="align-items:flex-end"><div style="flex:3"><label>API Key</label><div style="position:relative"><input type="password" id="manualKey" placeholder="sk-ant-api03-..." style="font-size:12px"/><button onclick="toggleManualKey()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer" id="mkToggle">show</button></div></div><div style="flex:0"><button class="btn btn-accent btn-sm" onclick="retryWithKey()">Connect</button></div></div><p style="font-size:11px;color:var(--text3);margin-top:10px">Tip: Add <code style="background:var(--surface2);padding:2px 6px;border-radius:4px">?key=YOUR_KEY</code> to the URL to auto-connect next time.</p>';
     document.getElementById("stepsBar").after(card);
   }
   card.style.display="block";
   document.getElementById("keyErrMsg").textContent=errMsg;
-  // Auto-populate key field if we already resolved one
-  var mk=document.getElementById("manualKey");
-  if(mk&&_AK&&mk.value===""){mk.value=_AK;}
 }
 
 function toggleManualKey(){var i=document.getElementById("manualKey"),b=document.getElementById("mkToggle");if(i.type==="password"){i.type="text";b.textContent="hide"}else{i.type="password";b.textContent="show"}}
@@ -860,8 +748,7 @@ function retryWithKey(){
   var k=document.getElementById("manualKey").value.trim();
   if(!k){alert("Please enter an API key.");return}
   _AK=k;
-  localStorage.setItem("foresight_api_key",k);
-  // Update URL without reload
+  // Update URL without reload so it persists on refresh
   var url=new URL(window.location);
   url.searchParams.set("key",k);
   window.history.replaceState({},"",url);
@@ -874,13 +761,13 @@ async function apiCall(prompt,mx){
   catch(e){clearTimeout(tm);if(e.name==="AbortError")throw new Error("Request timed out (90s)");throw e}
 }
 
-function setMode(m,el){S.mode=m;el.parentElement.querySelectorAll(".mode-opt").forEach(function(o){o.classList.remove("on")});el.classList.add("on");renderFields();updateRunBtn()}
+function setMode(m,el){S.mode=m;el.parentElement.querySelectorAll(".mode-opt").forEach(function(o){o.classList.remove("on")});el.classList.add("on");renderFields();renderDemoCreatives();updateRunBtn()}
 
 function renderTypes(){
   var h="";Object.keys(FIELDS).forEach(function(k){h+='<div class="chip'+(S.type===k?" on":"")+'" onclick="setTyp(\''+k+'\')">'+FIELDS[k].label+'</div>'});
   document.getElementById("typeChips").innerHTML=h;
 }
-function setTyp(k){S.type=k;S.crA={};S.crB={};renderTypes();renderFields();updateRunBtn()}
+function setTyp(k){S.type=k;S.crA={};S.crB={};renderTypes();renderFields();renderDemoCreatives();updateRunBtn()}
 
 function renderFields(){
   var f=FIELDS[S.type];
@@ -899,6 +786,109 @@ function renderFields(){
   }
 }
 function uc(v,k,val){if(v==="A")S.crA[k]=val;else S.crB[k]=val;updateRunBtn();renderSteps()}
+
+// ── DEMO LIBRARY ──
+var _activeIndustry="";
+
+function setIndustry(ind,el){
+  // Toggle off if same industry clicked
+  if(_activeIndustry===ind){
+    _activeIndustry="";
+    el.classList.remove("on");
+    document.getElementById("demoCreativeList").style.display="none";
+    // Remove demo personas from selection
+    S.sel=S.sel.filter(function(id){return !id.startsWith("dp_")});
+    renderPersonas();updateRunBtn();
+    return;
+  }
+
+  _activeIndustry=ind;
+  document.querySelectorAll("#industryChips .chip").forEach(function(c){c.classList.remove("on")});
+  el.classList.add("on");
+
+  // Load industry personas (clears previous industry's personas first)
+  loadDemoPersonas(ind);
+
+  // Show creative list for current type
+  renderDemoCreatives();
+}
+
+function loadDemoPersonas(ind){
+  var demoP=DEMO_PERSONAS[ind]||[];
+  // Remove previously loaded demo personas from selection
+  S.sel=S.sel.filter(function(id){return !id.startsWith("dp_")});
+  // Add all demo personas to selection
+  demoP.forEach(function(p){
+    if(S.sel.indexOf(p.id)===-1)S.sel.push(p.id);
+  });
+  renderPersonas();
+  updateRunBtn();
+}
+
+function getAll(){
+  var base=PRESETS.concat(loadCustom());
+  if(_activeIndustry&&DEMO_PERSONAS[_activeIndustry]){
+    base=DEMO_PERSONAS[_activeIndustry].concat(base);
+  }
+  return base;
+}
+
+function renderDemoCreatives(){
+  if(!_activeIndustry){document.getElementById("demoCreativeList").style.display="none";return}
+  // Map creative type
+  var typeMap={"digital-ad":"digital-ad","email":"email","landing":"landing"};
+  var ct=typeMap[S.type]||S.type;
+  var creatives=DEMO_CREATIVES[_activeIndustry]&&DEMO_CREATIVES[_activeIndustry][ct];
+  if(!creatives||creatives.length===0){
+    document.getElementById("demoCreativeList").style.display="block";
+    document.getElementById("demoCreativeList").innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px">No demo creatives for this format. Switch format above.</div>';
+    return;
+  }
+
+  var h='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+  creatives.forEach(function(cr,i){
+    var preview=cr.data.headline||cr.data.subject||cr.data.hero||"";
+    if(preview.length>50)preview=preview.substring(0,47)+"...";
+    h+='<div onclick="loadDemoCreative(\''+_activeIndustry+'\',\''+ct+'\','+i+',\'A\')" style="padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-xs);cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor=\'var(--orange)\'" onmouseout="this.style.borderColor=\'var(--border)\'">';
+    h+='<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px">'+esc(cr.name)+'</div>';
+    h+='<div style="font-size:11px;color:var(--text3);line-height:1.4">'+esc(preview)+'</div>';
+    h+='</div>';
+  });
+  h+='</div>';
+
+  if(S.mode==="ab"){
+    h+='<div style="font-size:10px;font-weight:700;color:var(--text3);margin-top:10px;text-transform:uppercase;letter-spacing:1px">Click loads into Variant A. For Variant B:</div>';
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">';
+    creatives.forEach(function(cr,i){
+      var preview=cr.data.headline||cr.data.subject||cr.data.hero||"";
+      if(preview.length>40)preview=preview.substring(0,37)+"...";
+      h+='<div onclick="loadDemoCreative(\''+_activeIndustry+'\',\''+ct+'\','+i+',\'B\')" style="padding:10px 12px;background:var(--orange-light);border:1px solid rgba(241,91,64,0.15);border-radius:var(--radius-xs);cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor=\'var(--orange)\'" onmouseout="this.style.borderColor=\'rgba(241,91,64,0.15)\'">';
+      h+='<div style="font-size:11px;font-weight:700;color:var(--orange)">B: '+esc(cr.name)+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+
+  document.getElementById("demoCreativeList").style.display="block";
+  document.getElementById("demoCreativeList").innerHTML=h;
+}
+
+function loadDemoCreative(ind,ct,idx,variant){
+  var cr=DEMO_CREATIVES[ind][ct][idx];
+  if(!cr)return;
+  if(variant==="A"){S.crA=Object.assign({},cr.data)}
+  else{S.crB=Object.assign({},cr.data)}
+  renderFields();
+  updateRunBtn();
+  renderSteps();
+  // Flash confirmation
+  var list=document.getElementById("demoCreativeList");
+  var msg=document.createElement("div");
+  msg.style.cssText="padding:8px 12px;background:rgba(22,163,74,0.1);color:#16a34a;border-radius:6px;font-size:12px;font-weight:600;margin-top:8px";
+  msg.textContent="Loaded \""+cr.name+"\" into Variant "+variant;
+  list.appendChild(msg);
+  setTimeout(function(){if(msg.parentNode)msg.parentNode.removeChild(msg)},2000);
+}
 
 function renderPersonas(){
   var all=getAll();var h="";
@@ -1342,48 +1332,6 @@ async function sendChat(){
   }catch(e){var el=document.getElementById("typingMsg");if(el)el.remove();ca.innerHTML+='<div class="chat-msg agent"><div class="chat-icon">R</div><div class="chat-bubble" style="color:var(--red)">Error: '+esc(e.message)+'</div></div>'}
   document.getElementById("chatSendBtn").disabled=false;ca.scrollTop=ca.scrollHeight;
 }
-
-
-// ── INIT ──
-// ALWAYS show landing page first — app only opens when user clicks Launch
-document.getElementById("landingPage").classList.remove("hid");
-document.getElementById("app").classList.add("hid");
-
-_AK=resolveKey();
-renderTypes();renderFields();renderPersonas();
-
-// Simple init — button already enabled in HTML, just set status dot
-(function(){
-  var ld=document.getElementById("landingDot");
-  var ls=document.getElementById("landingStatus");
-  if(_AK){
-    if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)";}
-    if(ls)ls.textContent="AI Engine Ready";
-  } else {
-    if(ld)ld.style.background="#d97706";
-    if(ls)ls.textContent="Ready";
-  }
-  updateRunBtn();renderSteps();
-})();
-
-// ── FALLBACK: window.onload ensures UI is correct even if INIT had issues ──
-window.addEventListener("load",function(){
-  if(!_AK)_AK=resolveKey();
-  var ls=document.getElementById("landingStatus");
-  var ld=document.getElementById("landingDot");
-  var lb=document.getElementById("launchBtn");
-  var lt=document.getElementById("launchText");
-  if(lb)lb.disabled=false;
-  if(lt&&(lt.textContent==="Starting..."||lt.textContent===""))lt.textContent="Launch Studio →";
-  if(_AK){
-    if(ls)ls.textContent="AI Engine Ready";
-    if(ld){ld.style.background="#16a34a";ld.style.boxShadow="0 0 8px rgba(22,163,74,0.4)";}
-  } else {
-    if(ls&&ls.textContent==="Starting...")ls.textContent="Ready";
-    if(ld&&!ld.style.background)ld.style.background="#d97706";
-  }
-});
-
 </script>
 </body>
 </html>
