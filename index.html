@@ -235,7 +235,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
 <svg style="position:absolute;width:0;height:0"><defs><linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#082340"/><stop offset="100%" stop-color="#F15B40"/></linearGradient></defs></svg>
 
 <!-- LANDING PAGE -->
-<div id="landingPage" class="hid">
+<div id="landingPage">
   <div style="min-height:100vh;display:flex;flex-direction:column">
     <!-- Landing Nav -->
     <div style="padding:16px 32px;display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto;width:100%">
@@ -570,11 +570,43 @@ function getKeyFromURL(){
   return params.get("key")||"";
 }
 
+// launchApp — called from landing page CTA buttons
+function launchApp(){
+  document.getElementById("landingPage").classList.add("hid");
+  document.getElementById("app").classList.remove("hid");
+  window.scrollTo(0,0);
+}
+
+// Landing page connect logic
+async function landingConnect(){
+  var dot=document.getElementById("landingDot");
+  var status=document.getElementById("landingStatus");
+  var btn=document.getElementById("launchBtn");
+  var txt=document.getElementById("launchText");
+  var err=document.getElementById("landingError");
+  try{
+    await apiCall("Reply: ok",20);
+    S.conn=true;
+    dot.classList.add("on");
+    status.textContent="AI Engine Ready";
+    btn.disabled=false;
+    txt.textContent="Launch Studio →";
+  } catch(e){
+    dot.style.background="var(--red)";
+    status.textContent="Connection issue";
+    err.style.display="block";
+    err.textContent="Add ?key=YOUR_KEY to the URL to connect.";
+    btn.disabled=false;
+    txt.textContent="Launch Studio →";
+  }
+}
+
 // INIT
 _AK=getKeyFromURL();
 renderTypes();renderFields();renderPersonas();
 
 if(_AK){
+  landingConnect();
   autoConnect();
 } else {
   showKeyInput("No API key found in URL. Add ?key=YOUR_KEY to the URL, or enter it below");
