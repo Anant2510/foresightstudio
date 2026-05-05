@@ -357,7 +357,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
 <div class="app hid" id="app">
   <!-- NAV -->
   <div class="nav">
-    <div class="logo" style="cursor:pointer" onclick="document.getElementById('app').classList.add('hid');document.getElementById('landingPage').classList.remove('hid');window.scrollTo(0,0)">
+    <div class="logo" style="cursor:pointer" onclick="goLanding()" title="Back to Landing Page">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" width="200" height="40" style="display:block">
         <defs><linearGradient id="lgI" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#082340"/><stop offset="100%" stop-color="#0d3a6b"/></linearGradient><linearGradient id="lgA" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#F15B40"/><stop offset="100%" stop-color="#ff7a5c"/></linearGradient></defs>
         <rect x="0" y="4" width="40" height="40" rx="10" fill="url(#lgI)"/>
@@ -375,6 +375,15 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
       <button class="btn btn-ghost btn-sm" onclick="showHistory()" id="histBtn" style="display:none">History <span id="histCount" style="background:var(--accent);color:#fff;padding:1px 7px;border-radius:10px;font-size:10px;margin-left:4px"></span></button>
       <div class="nav-status"><div class="status-dot" id="navDot"></div><span id="navStatus">Initializing...</span></div>
     </div>
+  </div>
+
+  <!-- BREADCRUMB BAR -->
+  <div id="breadcrumbBar" style="display:flex;align-items:center;gap:6px;margin-bottom:16px;font-size:12px;color:var(--text3)">
+    <button onclick="goLanding()" style="background:none;border:none;color:var(--orange);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;padding:0;display:flex;align-items:center;gap:4px">&#8592; Landing</button>
+    <span style="color:var(--border2)">/</span>
+    <button id="bcHome" onclick="goHome()" style="background:none;border:none;color:var(--text3);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;padding:0">Studio Home</button>
+    <span id="bcPageSep" style="color:var(--border2);display:none">/</span>
+    <span id="bcPage" style="color:var(--text2);font-weight:600;display:none"></span>
   </div>
 
   <!-- SETUP VIEW -->
@@ -410,10 +419,13 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
         </div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Pick an industry to auto-load personas and browse ready-to-test creatives:</div>
         <div class="chip-row" id="industryChips">
-          <div class="chip" onclick="setIndustry('airlines',this)">&#9992;&#65039; Airlines</div>
+          <div class="chip" onclick="setIndustry('airline',this)">&#9992;&#65039; Airlines</div>
           <div class="chip" onclick="setIndustry('banking',this)">&#127974; Banking</div>
         </div>
         <div id="demoCreativeList" style="display:none;margin-top:12px"></div>
+        <div id="demoClearRow" style="display:none;margin-top:10px">
+          <button onclick="clearDemoSelection()" style="background:none;border:1px solid var(--border2);border-radius:var(--radius-xs);padding:6px 14px;font-size:11px;font-weight:600;color:var(--text3);cursor:pointer;font-family:inherit" onmouseover="this.style.color='var(--red)';this.style.borderColor='var(--red)'" onmouseout="this.style.color='var(--text3)';this.style.borderColor='var(--border2)'">&#10005; Clear demo selection</button>
+        </div>
       </div>
 
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
@@ -604,6 +616,33 @@ function resolveKey(){
 }
 
 // launchApp — called from landing page CTA buttons
+// ── NAVIGATION HELPERS ──
+function goLanding(){
+  document.getElementById('app').classList.add('hid');
+  document.getElementById('landingPage').classList.remove('hid');
+  window.scrollTo(0,0);
+}
+function goHome(){
+  document.getElementById('setupView').classList.remove('hid');
+  document.getElementById('resView').classList.add('hid');
+  document.getElementById('histView').classList.add('hid');
+  setBreadcrumb('');
+  window.scrollTo(0,0);
+}
+function setBreadcrumb(page){
+  var sep=document.getElementById('bcPageSep');
+  var pg=document.getElementById('bcPage');
+  var home=document.getElementById('bcHome');
+  if(!sep||!pg||!home)return;
+  if(page){
+    sep.style.display='';pg.style.display='';pg.textContent=page;
+    home.style.color='var(--orange)';home.style.fontWeight='600';
+  } else {
+    sep.style.display='none';pg.style.display='none';
+    home.style.color='var(--text3)';home.style.fontWeight='500';
+  }
+}
+
 function launchApp(){
   document.getElementById("landingPage").classList.add("hid");
   document.getElementById("app").classList.remove("hid");
@@ -868,12 +907,13 @@ function uc(v,k,val){if(v==="A")S.crA[k]=val;else S.crB[k]=val;updateRunBtn();re
 var _activeIndustry="";
 
 function setIndustry(ind,el){
+  var clearRow=document.getElementById("demoClearRow");
   // Toggle off if same industry clicked
   if(_activeIndustry===ind){
     _activeIndustry="";
     el.classList.remove("on");
     document.getElementById("demoCreativeList").style.display="none";
-    // Remove demo personas from selection
+    if(clearRow)clearRow.style.display="none";
     S.sel=S.sel.filter(function(id){return !id.startsWith("dp_")});
     renderPersonas();updateRunBtn();
     return;
@@ -882,12 +922,25 @@ function setIndustry(ind,el){
   _activeIndustry=ind;
   document.querySelectorAll("#industryChips .chip").forEach(function(c){c.classList.remove("on")});
   el.classList.add("on");
+  if(clearRow)clearRow.style.display="block";
 
-  // Load industry personas (clears previous industry's personas first)
+  // Load industry personas
   loadDemoPersonas(ind);
 
   // Show creative list for current type
   renderDemoCreatives();
+}
+
+function clearDemoSelection(){
+  _activeIndustry="";
+  document.querySelectorAll("#industryChips .chip").forEach(function(c){c.classList.remove("on")});
+  document.getElementById("demoCreativeList").style.display="none";
+  var clearRow=document.getElementById("demoClearRow");
+  if(clearRow)clearRow.style.display="none";
+  // Clear demo personas and creative fields
+  S.sel=S.sel.filter(function(id){return !id.startsWith("dp_")});
+  S.crA={};S.crB={};
+  renderPersonas();renderFields();updateRunBtn();renderSteps();
 }
 
 function loadDemoPersonas(ind){
@@ -1139,7 +1192,7 @@ function showResults(){
   updateHistBtn();
 }
 
-function showSingle(backBtn){
+function showSingle(backBtn){setBreadcrumb('Results');
   var valid=S.resA.filter(function(x){return x.r.overall>0});
   var avg=valid.length>0?(valid.reduce(function(s,x){return s+x.r.overall},0)/valid.length).toFixed(1):"-";
   var h=backBtn;
@@ -1154,7 +1207,7 @@ function showSingle(backBtn){
   document.getElementById("resView").innerHTML=h;
 }
 
-function showAB(backBtn){
+function showAB(backBtn){setBreadcrumb('Results');
   var vA=S.resA.filter(function(x){return x.r.overall>0});var vB=S.resB.filter(function(x){return x.r.overall>0});
   var avgA=vA.length>0?(vA.reduce(function(s,x){return s+x.r.overall},0)/vA.length).toFixed(1):0;
   var avgB=vB.length>0?(vB.reduce(function(s,x){return s+x.r.overall},0)/vB.length).toFixed(1):0;
@@ -1192,7 +1245,7 @@ function showAB(backBtn){
   document.getElementById("resView").innerHTML=h;
 }
 
-function resetApp(){document.getElementById("setupView").classList.remove("hid");document.getElementById("resView").classList.add("hid");document.getElementById("histView").classList.add("hid");S.resA=[];S.resB=[];S.chatHistory=[];updateRunBtn();window.scrollTo(0,0)}
+function resetApp(){document.getElementById("setupView").classList.remove("hid");document.getElementById("resView").classList.add("hid");document.getElementById("histView").classList.add("hid");S.resA=[];S.resB=[];S.chatHistory=[];setBreadcrumb('');updateRunBtn();window.scrollTo(0,0)}
 
 // ── EXPERIMENT HISTORY ──────────────────────────
 function loadHistory(){try{return JSON.parse(localStorage.getItem("fs_history")||"[]")}catch(e){return[]}}
@@ -1260,7 +1313,7 @@ function clearAllHistory(){
   saveHistory([]);showHistory();updateHistBtn();
 }
 
-function showHistory(){
+function showHistory(){setBreadcrumb('History');
   document.getElementById("setupView").classList.add("hid");
   document.getElementById("resView").classList.add("hid");
   document.getElementById("histView").classList.remove("hid");
@@ -1342,7 +1395,7 @@ function showHistory(){
   document.getElementById("histView").innerHTML=h;
 }
 
-function viewExperiment(id){
+function viewExperiment(id){setBreadcrumb('Experiment');
   var hist=loadHistory();
   var exp=hist.find(function(e){return e.id===id});
   if(!exp)return;
