@@ -399,7 +399,29 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
     <!-- STEP 3: CREATIVE -->
     <div id="step3" class="glass-card">
       <h3><span style="color:var(--orange)">02</span> Enter Your Creative</h3>
-      <p class="desc" id="creativeDesc">Paste the copy you want to test.</p>
+      <p class="desc" id="creativeDesc">Load a prebuilt demo or paste your own creative below.</p>
+
+      <!-- DEMO LIBRARY -->
+      <div style="margin-bottom:20px;padding:16px 18px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:16px">&#128218;</span>
+          <span style="font-size:12px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.5px">Demo Library</span>
+          <span style="font-size:11px;color:var(--text3);font-weight:400">&#8212; preloaded creatives &amp; personas</span>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Pick an industry to auto-load personas and browse ready-to-test creatives:</div>
+        <div class="chip-row" id="industryChips">
+          <div class="chip" onclick="setIndustry('airlines',this)">&#9992;&#65039; Airlines</div>
+          <div class="chip" onclick="setIndustry('banking',this)">&#127974; Banking</div>
+        </div>
+        <div id="demoCreativeList" style="display:none;margin-top:12px"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        <div style="flex:1;height:1px;background:var(--surface3)"></div>
+        <span style="font-size:11px;color:var(--text3);font-weight:600;white-space:nowrap">OR ENTER MANUALLY</span>
+        <div style="flex:1;height:1px;background:var(--surface3)"></div>
+      </div>
+
       <div id="fieldsArea"></div>
     </div>
 
