@@ -591,8 +591,8 @@ var DEMO_CREATIVES={
 var FIELDS={"digital-ad":{label:"Digital Ad",items:[{k:"headline",l:"Headline",p:"Your attention-grabbing headline"},{k:"body",l:"Body Copy",p:"Supporting message",t:"area"},{k:"cta",l:"CTA",p:"e.g., Start Saving Smarter"},{k:"visual",l:"Visual Description",p:"Describe the visual concept",t:"area"}]},"email":{label:"Email Campaign",items:[{k:"subject",l:"Subject Line",p:"The subject line"},{k:"preview",l:"Preview Text",p:"Inbox preview"},{k:"body",l:"Email Body",p:"Full body copy",t:"area"},{k:"cta",l:"Primary CTA",p:"e.g., Review Your Plan"}]},"landing":{label:"Landing Page",items:[{k:"hero",l:"Hero Headline",p:"Main headline + subhead",t:"area"},{k:"props",l:"Value Props",p:"Key benefits",t:"area"},{k:"trust",l:"Trust Signals",p:"Social proof, stats",t:"area"},{k:"cta",l:"Primary CTA",p:"e.g., Open Account"}]}};
 var DIMS=["Relevance","Emotional Resonance","Clarity","Trust","Action Likelihood"];
 function esc(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
-function loadCustom(){try{return JSON.parse(localStorage.getItem("fs_personas")||"[]")}catch(e){return[]}}
-function saveCustom(a){localStorage.setItem("fs_personas",JSON.stringify(a))}
+function loadCustom(){try{return JSON.parse(sessionStorage.getItem("fs_personas")||"[]")}catch(e){return[]}}
+function saveCustom(a){sessionStorage.setItem("fs_personas",JSON.stringify(a))}
 var S={type:"digital-ad",mode:"single",crA:{},crB:{},sel:["yp","af","nr","sb"],conn:false,resA:[],resB:[],chatHistory:[],cancelled:false};
 
 var _MODEL="claude-sonnet-4-20250514";
