@@ -1,5 +1,7 @@
 # Foresight Studio — Deployment Guide
 
+> **Hosting is moving to the xPerion Azure VM (Windows Server).** See [MIGRATION.md](MIGRATION.md). On the VM the API key stays on the server and is added to AI calls there, so nothing secret reaches the browser. The GitHub Pages steps below remain valid until cutover.
+
 ## Predict Creative Performance Before Launch
 
 This guide walks you through deploying Foresight Studio to GitHub Pages with automatic API key injection so your stakeholders never have to enter a key.
@@ -23,6 +25,8 @@ This guide walks you through deploying Foresight Studio to GitHub Pages with aut
 | `.gitignore` | Yes | Tells Git to never track `config.js` |
 | `.github/workflows/deploy.yml` | Yes | Automates deployment with key injection |
 | `config.js` | **Never** | Generated at deploy time from your secret |
+| `deploy/windows/` | Yes | Azure VM app server, setup and rollback scripts |
+| `deploy/cutover/deploy.yml` | Yes | Turns GitHub Pages into a redirect at cutover |
 
 ---
 

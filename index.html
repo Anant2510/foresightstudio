@@ -598,6 +598,11 @@ var S={type:"digital-ad",mode:"single",crA:{},crB:{},sel:["yp","af","nr","sb"],c
 var _MODEL="claude-sonnet-4-6";
 var _AK="";
 function gk(){return _AK}
+// Server proxy mode (Azure VM): config.js sets window.FORESIGHT_PROXY to the proxy endpoint.
+// The API key is injected by the server and never reaches the browser.
+var _PROXY=(typeof window.FORESIGHT_PROXY==="string"&&window.FORESIGHT_PROXY)?window.FORESIGHT_PROXY:"";
+function apiUrl(){return _PROXY||"https://api.anthropic.com/v1/messages"}
+function apiHeaders(){var h={"Content-Type":"application/json","anthropic-version":"2023-06-01"};if(!_PROXY){h["x-api-key"]=gk();h["anthropic-dangerous-direct-browser-access"]="true"}return h}
 
 // Multi-source key resolver: config.js → localStorage → URL ?key= → URL #key=
 function resolveKey(){
@@ -656,7 +661,7 @@ async function landingConnect(){
   var btn=document.getElementById("launchBtn");
   var txt=document.getElementById("launchText");
   var err=document.getElementById("landingError");
-  if(!_AK){
+  if(!_AK&&!_PROXY){
     dot.style.background="var(--red)";
     status.textContent="No API key";
     err.style.display="block";
@@ -669,7 +674,7 @@ async function landingConnect(){
     await apiCall("Reply: ok",20);
     S.conn=true;
     // Persist key for next visit
-    try{localStorage.setItem("fs_ak",_AK)}catch(e){}
+    if(_AK){try{localStorage.setItem("fs_ak",_AK)}catch(e){}}
     dot.classList.add("on");
     status.textContent="AI Engine Ready";
     btn.disabled=false;
@@ -678,19 +683,19 @@ async function landingConnect(){
     dot.style.background="var(--red)";
     status.textContent="Connection failed";
     err.style.display="block";
-    err.textContent="Key invalid or network error: "+e.message;
+    err.textContent=(_PROXY?"AI Engine unavailable: ":"Key invalid or network error: ")+e.message;
     btn.disabled=false;
     txt.textContent="Launch Studio →";
   }
 }
 
 // INIT
-_AK=resolveKey();
+_AK=_PROXY?"":resolveKey();
 renderTypes();renderFields();renderPersonas();
 
 landingConnect();
 
-if(_AK){
+if(_AK||_PROXY){
   autoConnect();
 } else {
   showKeyInput("No API key found. Add ?key=YOUR_KEY to the URL, or enter it below.");
@@ -840,7 +845,7 @@ async function autoConnect(){
   }
   catch(e){
     document.getElementById("navStatus").textContent="Connection issue";
-    showKeyInput(e.message);
+    if(!_PROXY)showKeyInput(e.message);
   }
   updateRunBtn();renderSteps();updateHistBtn();
 }
@@ -873,7 +878,7 @@ function retryWithKey(){
 
 async function apiCall(prompt,mx){
   var ctrl=new AbortController();var tm=setTimeout(function(){ctrl.abort()},90000);
-  try{var r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":gk(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:_MODEL,max_tokens:mx||1000,messages:[{role:"user",content:prompt}]}),signal:ctrl.signal});clearTimeout(tm);if(!r.ok){var e=await r.text();var parsed="";try{parsed=JSON.parse(e).error.message}catch(x){parsed=e.substring(0,150)};throw new Error(r.status+": "+parsed)}var d=await r.json();return d.content.map(function(b){return b.text||""}).join("")}
+  try{var r=await fetch(apiUrl(),{method:"POST",headers:apiHeaders(),body:JSON.stringify({model:_MODEL,max_tokens:mx||1000,messages:[{role:"user",content:prompt}]}),signal:ctrl.signal});clearTimeout(tm);if(!r.ok){var e=await r.text();var parsed="";try{parsed=JSON.parse(e).error.message}catch(x){parsed=e.substring(0,150)};throw new Error(r.status+": "+parsed)}var d=await r.json();return d.content.map(function(b){return b.text||""}).join("")}
   catch(e){clearTimeout(tm);if(e.name==="AbortError")throw new Error("Request timed out (90s)");throw e}
 }
 
@@ -1452,8 +1457,9 @@ async function sendChat(){
   msgs.push({role:"user",content:msg});
   try{
     var ctrl=new AbortController();var tm=setTimeout(function(){ctrl.abort()},90000);
-    var r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":gk(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:_MODEL,max_tokens:1500,messages:msgs}),signal:ctrl.signal});
+    var r=await fetch(apiUrl(),{method:"POST",headers:apiHeaders(),body:JSON.stringify({model:_MODEL,max_tokens:1500,messages:msgs}),signal:ctrl.signal});
     clearTimeout(tm);
+    if(!r.ok){var et=await r.text();var em="";try{em=JSON.parse(et).error.message}catch(x){em=et.substring(0,150)}throw new Error(r.status+": "+em)}
     var d=await r.json();var txt=d.content.map(function(b){return b.text||""}).join("");
     var el=document.getElementById("typingMsg");if(el)el.remove();
     var fmt=esc(txt).replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p style="margin-top:8px">').replace(/\n/g,'<br>');
