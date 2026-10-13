@@ -1,0 +1,63 @@
+# =====================================================================
+# CUTOVER VERSION of .github/workflows/deploy.yml
+# Copy this over .github/workflows/deploy.yml when the Azure VM is live.
+# GitHub Pages then serves only a redirect to the new address, and no
+# API key is published anywhere on GitHub any more.
+#
+# Needs repo variable FORESIGHT_URL (the new Azure address).
+# Afterwards delete the FORESIGHT_KEY repo secret and revoke that key.
+# =====================================================================
+name: Redirect GitHub Pages to Azure VM
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Build redirect page
+        env:
+          TARGET: ${{ vars.FORESIGHT_URL }}
+        run: |
+          [ -n "$TARGET" ] || { echo "::error::Set the FORESIGHT_URL repo variable first"; exit 1; }
+          mkdir -p site
+          cat > site/index.html <<HTML
+          <!doctype html>
+          <html lang="en"><head><meta charset="utf-8">
+          <title>Foresight Studio has moved</title>
+          <meta name="robots" content="noindex">
+          <meta http-equiv="refresh" content="0; url=$TARGET">
+          <script>location.replace("$TARGET");</script>
+          </head><body style="font-family:Inter,system-ui,sans-serif;color:#082340;padding:48px">
+          <p>Foresight Studio has moved to <a href="$TARGET" style="color:#F15B40">$TARGET</a>.</p>
+          </body></html>
+          HTML
+          cp site/index.html site/404.html
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload to Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
