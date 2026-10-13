@@ -5,8 +5,9 @@
  * Zero dependencies (Node 20.3+). Runs behind Caddy, which handles HTTPS.
  *
  *  - Serves the app at <basePath>/ (index.html from appDir)
- *  - Relays AI calls to Anthropic and adds the API key on the server,
- *    so the key never reaches the browser
+ *  - Relays AI calls to Anthropic or Claude in Microsoft Foundry and adds the
+ *    API key on the server, so the key never reaches the browser
+ *  - Optionally pins the model (Foundry: your deployment name)
  *  - Per-IP rate limit, optional login, auto-deploys index.html from GitHub
  *
  * Usage:  node server.js                 start the server
@@ -23,7 +24,7 @@ const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
 
 const VERSION = '1.0.0';
-const KEY_RE = /^sk-ant-[A-Za-z0-9_-]{20,}$/;
+const KEY_RE = /^[A-Za-z0-9._~+\/=-]{20,}$/;      // Anthropic (sk-ant-...) or Azure Foundry key
 const KEY_SCAN_RE = /sk-ant-[A-Za-z0-9_-]{20,}/;
 const CONFIG_JS = '// Served by the Foresight Studio server. No API key here: the server adds it.\n' +
                   'window.FORESIGHT_PROXY = "api/v1/messages";\n';
@@ -47,7 +48,7 @@ function loadConfig() {
   const out = Object.assign({
     host: '127.0.0.1', port: 8790, basePath: '/foresightstudio', logFile: null,
     upstream: 'https://api.anthropic.com', upstreamTimeoutMs: 120000,
-    maxBodyBytes: 5 * 1024 * 1024, trustProxy: true, auth: null
+    maxBodyBytes: 5 * 1024 * 1024, trustProxy: true, auth: null, model: null
   }, c);
   out.rateLimit = Object.assign({ perMinute: 60, burst: 30 }, c.rateLimit || {});
   out.autoUpdate = Object.assign({
@@ -160,6 +161,7 @@ async function handleApi(req, res, ip) {
   catch (e) { return e.code === 413 ? apiError(res, 413, 'request_too_large', 'Request is too large.', { Connection: 'close' }) : apiError(res, 400, 'invalid_request_error', 'Could not read the request.'); }
   try { parsed = JSON.parse(body.toString('utf8')); } catch { return apiError(res, 400, 'invalid_request_error', 'Body must be JSON.'); }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return apiError(res, 400, 'invalid_request_error', 'Body must be a JSON object.');
+  if (cfg.model && parsed.model !== cfg.model) { parsed.model = cfg.model; body = Buffer.from(JSON.stringify(parsed)); }
 
   // A fresh header set: Anthropic never sees the visitor's cookies, login or origin.
   const headers = { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': String(req.headers['anthropic-version'] || '2023-06-01') };
@@ -246,6 +248,7 @@ function start() {
   server.on('error', e => { log('fatal', e.code || '', e.message); process.exit(1); });
   server.listen(cfg.port, cfg.host, () => {
     log('start', `v${VERSION}`, `http://${cfg.host}:${cfg.port}${cfg.basePath}/`, `key=${getKey() ? 'ok' : 'MISSING'}`,
+      `upstream=${new URL(cfg.upstream).host}`, `model=${cfg.model || 'from app'}`,
       `auth=${cfg.auth ? 'on' : 'off'}`, `autoUpdate=${cfg.autoUpdate.enabled ? cfg.autoUpdate.repo + '@' + cfg.autoUpdate.branch : 'off'}`);
   });
   if (cfg.autoUpdate.enabled) startUpdater();

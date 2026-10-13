@@ -17,6 +17,10 @@
   powershell -ExecutionPolicy Bypass -File .\deploy\windows\setup.ps1 -Domain xperion2.centralindia.cloudapp.azure.com -Email you@coforge.com
 
 .EXAMPLE
+  Claude in Microsoft Foundry instead of the Anthropic API:
+  ... setup.ps1 -Domain <name> -Upstream https://<resource>.services.ai.azure.com/anthropic -Model <deployment-name>
+
+.EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\deploy\windows\setup.ps1
   (no domain yet: serves plain HTTP on port 80 by IP address)
 #>
@@ -28,6 +32,8 @@ param(
   [int]$Port = 8790,
   [string]$Repo = "anant2510/foresightstudio",
   [string]$Branch = "main",
+  [string]$Upstream = "",   # default https://api.anthropic.com; or https://<resource>.services.ai.azure.com/anthropic
+  [string]$Model = "",      # pin every call to this model / Foundry deployment name
   [switch]$NoAutoUpdate,
   [switch]$UpdateCaddy,
   [string]$CaddyExe = ""
@@ -145,6 +151,19 @@ if (-not (Test-Path $Curl)) { Fail "curl.exe not found in System32." }
 if ($Domain -and $Domain -notmatch '^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$') { Fail "-Domain should be a host name like xperion2.centralindia.cloudapp.azure.com" }
 Ok "Repo looks right: $RepoDir"
 
+$existingCfg = $null
+if (Test-Path $ConfigFile) { try { $existingCfg = [IO.File]::ReadAllText($ConfigFile) | ConvertFrom-Json } catch { } }
+if (-not $Upstream) { if ($existingCfg -and $existingCfg.upstream) { $Upstream = "$($existingCfg.upstream)" } else { $Upstream = "https://api.anthropic.com" } }
+$Upstream = ($Upstream.Trim() -replace '/+$', '') -replace '/v1/messages$', '' -replace '/v1$', ''
+$Upstream = $Upstream -replace '/+$', ''
+if ($Upstream -notmatch '^https://[A-Za-z0-9.-]+(:\d+)?(/[A-Za-z0-9._~-]+)*$') { Fail "-Upstream must be an https URL like https://<resource>.services.ai.azure.com/anthropic" }
+if (-not $Model -and $existingCfg -and $existingCfg.model) { $Model = "$($existingCfg.model)" }
+if ($Model -and $Model -notmatch '^[A-Za-z0-9._:-]+$') { Fail "-Model should be a model or deployment name like claude-sonnet-5-5" }
+$isAnthropic = ($Upstream -eq "https://api.anthropic.com")
+$aiName = "Anthropic"; if (-not $isAnthropic) { $aiName = ([Uri]$Upstream).Host }
+$modelNote = "model from the app"; if ($Model) { $modelNote = "model pinned to $Model" }
+Ok "AI endpoint: $Upstream/v1/messages ($modelNote)"
+
 $nodeCmd = Get-Command node -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $nodeCmd) { Fail "Node.js not found. Install Node 22 LTS or newer, then re-run." }
 $nodeSrc = $nodeCmd.Path
@@ -168,9 +187,9 @@ foreach ($l in (Get-Listeners @(80, 443))) {
 foreach ($l in (Get-Listeners @($Port))) { Fail "Port $Port is used by $($l.Name). Re-run with -Port 8791 (or another free port)." }
 Ok "Ports 80, 443 and $Port are available"
 
-$r = Get-Http @("-I", "https://api.anthropic.com")
-if ($r.Code -eq "000") { Fail "This VM can't reach https://api.anthropic.com (outbound 443 blocked?)." }
-Ok "Outbound access to Anthropic works"
+$r = Get-Http @("-I", "$Upstream/v1/messages")
+if ($r.Code -eq "000") { Fail "This VM can't reach $Upstream (outbound 443 blocked, or a private-only endpoint?)." }
+Ok "Outbound access to $aiName works"
 
 if ($Domain) {
   $dns = Resolve-DnsName $Domain -Type A -ErrorAction SilentlyContinue | Where-Object { $_.IPAddress }
@@ -183,19 +202,24 @@ if ($Domain) {
 # ==================================================================
 Step "2/7  Settings"
 # ==================================================================
-$existingCfg = $null
-if (Test-Path $ConfigFile) { try { $existingCfg = [IO.File]::ReadAllText($ConfigFile) | ConvertFrom-Json } catch { } }
-
 # API key
 $key = "$env:FS_API_KEY".Trim()
 $keepKey = $false
 if (-not $key -and (Test-Path $KeyFile)) { $keepKey = YesNo "An API key is already stored on this VM. Keep it?" $true }
 if (-not $key -and -not $keepKey) {
-  Write-Host "    Paste the Anthropic API key for this VM (input hidden)."
-  Write-Host "    Tip: create a new key named 'foresight-azure-vm' rather than reusing the GitHub one."
+  if ($isAnthropic) {
+    Write-Host "    Paste the Anthropic API key for this VM (input hidden)."
+    Write-Host "    Tip: create a new key named 'foresight-azure-vm' rather than reusing the GitHub one."
+  } else {
+    Write-Host "    Paste the API key for $aiName (input hidden)."
+    Write-Host "    Find it in the Foundry portal (your deployment > Details > Key) or Azure portal > resource > Keys and Endpoint."
+  }
   $key = (ToPlain (Read-Host "    API key" -AsSecureString)).Trim()
 }
-if (-not $keepKey -and $key -notmatch '^sk-ant-[A-Za-z0-9_-]{20,}$') { Fail "That doesn't look like an Anthropic key (expected sk-ant-...)." }
+if (-not $keepKey) {
+  if ($isAnthropic -and $key -notmatch '^sk-ant-[A-Za-z0-9_-]{20,}$') { Fail "That doesn't look like an Anthropic key (expected sk-ant-...)." }
+  if (-not $isAnthropic -and $key -notmatch '^[A-Za-z0-9._~+/=-]{20,}$') { Fail "That doesn't look like an API key (20+ letters/digits, no spaces)." }
+}
 
 # Optional login
 $authMode = "off"; $authUser = ""; $authPass = ""
@@ -284,11 +308,12 @@ if ($authMode -eq "keep") {
 $rate = [ordered]@{ perMinute = 60; burst = 30 }
 if ($existingCfg -and $existingCfg.rateLimit) { $rate = [ordered]@{ perMinute = $existingCfg.rateLimit.perMinute; burst = $existingCfg.rateLimit.burst } }
 $tokenPath = $null; if ($useToken) { $tokenPath = $TokenFile }
+$modelVal = $null; if ($Model) { $modelVal = $Model }
 
 $cfgObj = [ordered]@{
   host = "127.0.0.1"; port = $Port; basePath = $BasePath
   appDir = $AppDir; keyFile = $KeyFile; logFile = $ServerLog
-  upstream = "https://api.anthropic.com"; upstreamTimeoutMs = 120000; maxBodyBytes = 5242880
+  upstream = $Upstream; model = $modelVal; upstreamTimeoutMs = 120000; maxBodyBytes = 5242880
   trustProxy = $true; rateLimit = $rate; auth = $authObj
   autoUpdate = [ordered]@{ enabled = $autoUpdate; repo = $Repo; branch = $Branch; path = "index.html"; intervalSeconds = 120; tokenFile = $tokenPath; apiBase = "https://api.github.com" }
 }
@@ -478,18 +503,20 @@ if ($authMode -ne "keep") {
   if ($cfgJs.Body -match 'FORESIGHT_PROXY' -and $cfgJs.Body -notmatch 'sk-ant-[A-Za-z0-9_-]{20,}') { Ok "config.js has no key in it" }
   else { Warn "config.js check failed (HTTP $($cfgJs.Code))"; $failed = $true }
 
-  $model = [regex]::Match($appText, 'var _MODEL="([^"]+)"').Groups[1].Value
-  if (-not $model) { $model = "claude-sonnet-4-6" }
+  $appModel = [regex]::Match($appText, 'var _MODEL="([^"]+)"').Groups[1].Value
+  if (-not $appModel) { $appModel = "claude-sonnet-4-6" }
   $bodyFile = [IO.Path]::GetTempFileName()
-  WriteText $bodyFile ('{"model":"' + $model + '","max_tokens":5,"messages":[{"role":"user","content":"Reply: ok"}]}')
+  WriteText $bodyFile ('{"model":"' + $appModel + '","max_tokens":5,"messages":[{"role":"user","content":"Reply: ok"}]}')
   $api = Get-Http ($route + $creds + @("-X", "POST", "-H", "content-type: application/json", "-H", "anthropic-version: 2023-06-01",
                                        "--data-binary", "@$bodyFile", "$site$BasePath/api/v1/messages"))
   Remove-Item $bodyFile -Force -ErrorAction SilentlyContinue
-  if ($api.Code -eq "200") { Ok "AI Engine reachable through the server (model: $model)" }
+  $usedModel = $appModel; if ($Model) { $usedModel = $Model }
+  if ($api.Code -eq "200") { Ok "AI Engine reachable through the server ($aiName, model: $usedModel)" }
   else {
     $snippet = $api.Body; if ($snippet.Length -gt 300) { $snippet = $snippet.Substring(0, 300) }
     Warn "AI call returned HTTP $($api.Code): $snippet"
-    if ($api.Code -eq "401") { Warn "401 = Anthropic rejected the key. Re-run setup and paste a valid key." }
+    if ($api.Code -eq "401") { Warn "401 = $aiName rejected the key. Re-run setup and paste a valid key." }
+    if ($api.Code -eq "404" -and -not $isAnthropic) { Warn "404 on Foundry usually means the deployment name is wrong. Re-run with -Model <exact deployment name>." }
     $failed = $true
   }
 }
