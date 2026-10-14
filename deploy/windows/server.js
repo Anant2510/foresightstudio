@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 'use strict';
 /*
- * Foresight Studio — app server for the xPerion Azure VM
+ * xPerion app server - hosts several demo apps on the xPerion Azure VM
  * Zero dependencies (Node 20.3+). Runs behind Caddy, which handles HTTPS.
  *
- *  - Serves the app at <basePath>/ (index.html from appDir)
- *  - Relays AI calls to Anthropic or Claude in Microsoft Foundry and adds the
- *    API key on the server, so the key never reaches the browser
+ *  - Serves each app at its own path (/foresightstudio/, /careai/, ...)
+ *  - For apps that use AI, relays calls to Anthropic or Claude in Microsoft
+ *    Foundry and adds the API key on the server, so it never reaches the browser
  *  - Optionally pins the model (Foundry: your deployment name)
- *  - Per-IP rate limit, optional login, auto-deploys index.html from GitHub
+ *  - Per-IP rate limit, optional login
+ *  - Mirrors each app from its GitHub repo (only changed files are downloaded)
  *
  * Usage:  node server.js                 start the server
- *         node server.js --check         validate config, key and app, then exit
+ *         node server.js --check         validate config and key, then exit
  *         node server.js --hash-password read a password on stdin, print {salt,hash}
  * Config: config.json next to this file, or the path in FS_CONFIG.
  */
@@ -23,18 +24,19 @@ const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
 
-const VERSION = '1.0.0';
+const VERSION = '2.0.0';
 const KEY_RE = /^[A-Za-z0-9._~+\/=-]{20,}$/;      // Anthropic (sk-ant-...) or Azure Foundry key
-const KEY_SCAN_RE = /sk-ant-[A-Za-z0-9_-]{20,}/;
-const CONFIG_JS = '// Served by the Foresight Studio server. No API key here: the server adds it.\n' +
-                  'window.FORESIGHT_PROXY = "api/v1/messages";\n';
+const KEY_SCAN_RE = /sk-ant-[A-Za-z0-9_-]{20,}/;   // what a leaked Anthropic key looks like
+const TEXT_EXT = new Set(['.html', '.htm', '.js', '.mjs', '.css', '.json', '.txt', '.md', '.csv', '.tsv', '.xml', '.svg', '.yml', '.yaml']);
+const DEFAULT_EXCLUDE = ['deploy/', 'README.md', 'MIGRATION.md', 'LICENSE'];
 const SEC_HEADERS = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin' };
 const MIME = {
-  '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif', '.webp': 'image/webp', '.ico': 'image/x-icon', '.pdf': 'application/pdf',
-  '.csv': 'text/csv; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.woff2': 'font/woff2'
+  '.html': 'text/html; charset=utf-8', '.htm': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8',
+  '.mjs': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
+  '.webp': 'image/webp', '.ico': 'image/x-icon', '.pdf': 'application/pdf', '.csv': 'text/csv; charset=utf-8',
+  '.tsv': 'text/tab-separated-values; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml',
+  '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.mp4': 'video/mp4', '.webm': 'video/webm', '.wasm': 'application/wasm'
 };
 
 let cfg = null;
@@ -46,19 +48,32 @@ function loadConfig() {
   const file = process.env.FS_CONFIG || path.join(__dirname, 'config.json');
   const c = readJson(file);
   const out = Object.assign({
-    host: '127.0.0.1', port: 8790, basePath: '/foresightstudio', logFile: null,
-    upstream: 'https://api.anthropic.com', upstreamTimeoutMs: 120000,
-    maxBodyBytes: 5 * 1024 * 1024, trustProxy: true, auth: null, model: null
+    host: '127.0.0.1', port: 8790, logFile: null, rootRedirect: null,
+    upstream: 'https://api.anthropic.com', upstreamTimeoutMs: 120000, model: null,
+    maxBodyBytes: 5 * 1024 * 1024, trustProxy: true, auth: null
   }, c);
   out.rateLimit = Object.assign({ perMinute: 60, burst: 30 }, c.rateLimit || {});
-  out.autoUpdate = Object.assign({
-    enabled: false, repo: '', branch: 'main', path: 'index.html',
-    intervalSeconds: 120, tokenFile: null, apiBase: 'https://api.github.com'
-  }, c.autoUpdate || {});
-  if (!/^\/[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/.test(out.basePath)) throw new Error('basePath must look like /foresightstudio');
-  for (const k of ['appDir', 'keyFile']) if (!out[k]) throw new Error(`config.${k} is required`);
-  if (out.autoUpdate.enabled && !/^[\w.-]+\/[\w.-]+$/.test(out.autoUpdate.repo)) throw new Error('autoUpdate.repo must look like owner/name');
-  out.appDir = path.resolve(out.appDir);
+  out.github = Object.assign({ apiBase: 'https://api.github.com', tokenFile: null, intervalSeconds: 120 }, c.github || {});
+  if (!out.keyFile) throw new Error('config.keyFile is required');
+  if (!Array.isArray(c.apps) || !c.apps.length) throw new Error('config.apps must list at least one app');
+  const seen = new Set();
+  out.apps = c.apps.map((a, i) => {
+    const app = Object.assign({ branch: 'main', proxyVar: null, repo: null, model: null, exclude: DEFAULT_EXCLUDE }, a);
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(app.name || '')) throw new Error(`apps[${i}].name must be lowercase letters, digits and dashes`);
+    if (seen.has(app.name)) throw new Error(`apps: duplicate name ${app.name}`);
+    seen.add(app.name);
+    app.basePath = app.basePath || '/' + app.name;
+    if (!/^\/[A-Za-z0-9._-]+$/.test(app.basePath)) throw new Error(`apps[${i}].basePath must look like /name`);
+    if (!app.appDir) throw new Error(`apps[${i}].appDir is required`);
+    app.appDir = path.resolve(app.appDir);
+    if (app.proxyVar && !/^[A-Za-z_$][\w$]*$/.test(app.proxyVar)) throw new Error(`apps[${i}].proxyVar must be a JavaScript name`);
+    if (app.repo && !/^[\w.-]+\/[\w.-]+$/.test(app.repo)) throw new Error(`apps[${i}].repo must look like owner/name`);
+    app.configJs = app.proxyVar
+      ? `// Served by the xPerion app server. No API key here: the server adds it.\nwindow.${app.proxyVar} = "api/v1/messages";\n`
+      : null;
+    return app;
+  });
+  if (!out.rootRedirect) out.rootRedirect = out.apps[0].basePath + '/';
   return out;
 }
 
@@ -149,21 +164,22 @@ function readBody(req, limit) {
 }
 
 // ---------------------------------------------------------------- AI proxy
-async function handleApi(req, res, ip) {
+async function handleApi(req, res, ip, app) {
   if (req.method !== 'POST') return apiError(res, 405, 'invalid_request_error', 'Use POST.', { Allow: 'POST' });
   const rl = allow(ip);
-  if (!rl.ok) { log('api', ip, 429, 'rate-limited'); return apiError(res, 429, 'rate_limit_error', 'Too many requests from this network. Wait a minute and try again.', { 'Retry-After': String(rl.retryAfter) }); }
+  if (!rl.ok) { log('api', app.name, ip, 429, 'rate-limited'); return apiError(res, 429, 'rate_limit_error', 'Too many requests from this network. Wait a minute and try again.', { 'Retry-After': String(rl.retryAfter) }); }
   const key = getKey();
-  if (!key) { log('api', ip, 500, 'no valid key in', cfg.keyFile); return apiError(res, 500, 'api_error', 'The server has no valid API key configured.'); }
+  if (!key) { log('api', app.name, ip, 500, 'no valid key in', cfg.keyFile); return apiError(res, 500, 'api_error', 'The server has no valid API key configured.'); }
 
   let body, parsed;
   try { body = await readBody(req, cfg.maxBodyBytes); }
   catch (e) { return e.code === 413 ? apiError(res, 413, 'request_too_large', 'Request is too large.', { Connection: 'close' }) : apiError(res, 400, 'invalid_request_error', 'Could not read the request.'); }
   try { parsed = JSON.parse(body.toString('utf8')); } catch { return apiError(res, 400, 'invalid_request_error', 'Body must be JSON.'); }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return apiError(res, 400, 'invalid_request_error', 'Body must be a JSON object.');
-  if (cfg.model && parsed.model !== cfg.model) { parsed.model = cfg.model; body = Buffer.from(JSON.stringify(parsed)); }
+  const pin = app.model || cfg.model;
+  if (pin && parsed.model !== pin) { parsed.model = pin; body = Buffer.from(JSON.stringify(parsed)); }
 
-  // A fresh header set: Anthropic never sees the visitor's cookies, login or origin.
+  // A fresh header set: the AI service never sees the visitor's cookies, login or origin.
   const headers = { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': String(req.headers['anthropic-version'] || '2023-06-01') };
   if (req.headers['anthropic-beta']) headers['anthropic-beta'] = String(req.headers['anthropic-beta']);
 
@@ -177,9 +193,9 @@ async function handleApi(req, res, ip) {
       signal: AbortSignal.any([clientGone.signal, AbortSignal.timeout(cfg.upstreamTimeoutMs)])
     });
   } catch (e) {
-    if (clientGone.signal.aborted) { log('api', ip, 'client-closed', `${Date.now() - t0}ms`); return; }
+    if (clientGone.signal.aborted) { log('api', app.name, ip, 'client-closed', `${Date.now() - t0}ms`); return; }
     const timedOut = e && e.name === 'TimeoutError';
-    log('api', ip, timedOut ? 504 : 502, `${Date.now() - t0}ms`, `model=${parsed.model}`, (e && e.cause && e.cause.code) || (e && e.message));
+    log('api', app.name, ip, timedOut ? 504 : 502, `${Date.now() - t0}ms`, `model=${parsed.model}`, (e && e.cause && e.cause.code) || (e && e.message));
     return timedOut
       ? apiError(res, 504, 'api_error', 'The AI Engine took too long to respond. Try again.')
       : apiError(res, 502, 'api_error', 'The server could not reach the AI Engine. Try again shortly.');
@@ -189,54 +205,73 @@ async function handleApi(req, res, ip) {
   res.writeHead(up.status, Object.assign({}, SEC_HEADERS, out));
   try { if (up.body) await pipeline(Readable.fromWeb(up.body), res); else res.end(); }
   catch { if (!res.writableEnded) res.destroy(); }
-  log('api', ip, up.status, `${Date.now() - t0}ms`, `model=${parsed.model}`, `max_tokens=${parsed.max_tokens}`);
+  log('api', app.name, ip, up.status, `${Date.now() - t0}ms`, `model=${parsed.model}`, `max_tokens=${parsed.max_tokens}`);
 }
 
-// ---------------------------------------------------------------- static app
-async function handleStatic(req, res, rel) {
+// ---------------------------------------------------------------- static files
+async function handleStatic(req, res, app, rel) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'Method not allowed', { Allow: 'GET, HEAD', 'Content-Type': 'text/plain' });
   if (rel === '' || rel.endsWith('/')) rel += 'index.html';
-  if (rel === 'config.js') return send(res, 200, CONFIG_JS, { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-cache' });
+  if (app.configJs && rel === 'config.js') return send(res, 200, app.configJs, { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-cache' });
   const segs = rel.split('/');
   // No dotfiles, empty segments, backslashes, NULs, drive letters or Windows streams.
   if (segs.some(s => !s || s.startsWith('.') || /[\\\0:*?"<>|]/.test(s))) return notFound(res);
-  const file = path.join(cfg.appDir, ...segs);
-  if (!file.startsWith(cfg.appDir + path.sep)) return notFound(res);
+  const file = path.join(app.appDir, ...segs);
+  if (!file.startsWith(app.appDir + path.sep)) return notFound(res);
   let st;
   try { st = await fsp.stat(file); } catch { return notFound(res); }
-  if (st.isDirectory()) return send(res, 301, '', { Location: cfg.basePath + '/' + rel + '/' });
+  if (st.isDirectory()) return send(res, 301, '', { Location: app.basePath + '/' + rel + '/' });
   const etag = `W/"${st.size}-${Math.trunc(st.mtimeMs)}"`;
   const common = { ETag: etag, 'Cache-Control': 'no-cache', 'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream' };
   if (req.headers['if-none-match'] === etag) { res.writeHead(304, Object.assign({}, SEC_HEADERS, common)); return res.end(); }
-  let data;
-  try { data = await fsp.readFile(file); } catch { return notFound(res); }
-  send(res, 200, data, common);
+  if (st.size <= 256 * 1024) {
+    let data;
+    try { data = await fsp.readFile(file); } catch { return notFound(res); }
+    return send(res, 200, data, common);
+  }
+  // Large files (datasets) are streamed rather than loaded into memory.
+  res.writeHead(200, Object.assign({ 'Content-Length': st.size }, SEC_HEADERS, common));
+  if (req.method === 'HEAD') return res.end();
+  try { await pipeline(fs.createReadStream(file), res); } catch { if (!res.writableEnded) res.destroy(); }
 }
 
 // ---------------------------------------------------------------- router & server
+function findApp(pathname) {
+  for (const app of cfg.apps) if (pathname === app.basePath || pathname.startsWith(app.basePath + '/')) return app;
+  return null;
+}
+
 async function route(req, res) {
-  let pathname;
-  try { pathname = new URL(req.url, 'http://localhost').pathname; } catch { return send(res, 400, 'Bad request'); }
+  let url;
+  try { url = new URL(req.url, 'http://localhost'); } catch { return send(res, 400, 'Bad request'); }
+  const pathname = url.pathname;
   const ip = clientIp(req);
   if (pathname === '/healthz') {
-    return send(res, 200, JSON.stringify({ ok: true, version: VERSION, keyConfigured: !!getKey(), app: deployState.sha }),
+    const apps = cfg.apps.map(a => ({ name: a.name, path: a.basePath + '/', synced: (syncState[a.name] && syncState[a.name].tree) || null, error: (syncState[a.name] && syncState[a.name].error) || null }));
+    return send(res, 200, JSON.stringify({ ok: true, version: VERSION, keyConfigured: !!getKey(), apps }),
       { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   }
   if (!checkAuth(req)) {
     const rl = allow(ip);   // failed logins count against the same per-IP limit
     if (!rl.ok) return send(res, 429, 'Too many attempts', { 'Retry-After': String(rl.retryAfter), 'Content-Type': 'text/plain' });
-    return send(res, 401, 'Login required', { 'WWW-Authenticate': 'Basic realm="Foresight Studio", charset="UTF-8"', 'Content-Type': 'text/plain' });
+    return send(res, 401, 'Login required', { 'WWW-Authenticate': 'Basic realm="xPerion demos", charset="UTF-8"', 'Content-Type': 'text/plain' });
   }
-  const base = cfg.basePath;
-  if (pathname === '/') return send(res, 302, '', { Location: base + '/' });
-  if (pathname === base) return send(res, 301, '', { Location: base + '/' });
-  if (pathname === base + '/api/v1/messages') return handleApi(req, res, ip);
-  if (pathname.startsWith(base + '/')) {
-    let rel;
-    try { rel = decodeURIComponent(pathname.slice(base.length + 1)); } catch { return send(res, 400, 'Bad request'); }
-    return handleStatic(req, res, rel);
+  if (pathname === '/') return send(res, 302, '', { Location: cfg.rootRedirect });
+  const app = findApp(pathname);
+  if (!app) {
+    // Old GitHub Pages style links such as /CareAI/ -> /careai/
+    const lower = pathname.toLowerCase();
+    for (const a of cfg.apps) {
+      const b = a.basePath.toLowerCase();
+      if (lower === b || lower.startsWith(b + '/')) return send(res, 301, '', { Location: a.basePath + pathname.slice(b.length) + url.search });
+    }
+    return notFound(res);
   }
-  return notFound(res);
+  if (pathname === app.basePath) return send(res, 301, '', { Location: app.basePath + '/' + url.search });
+  if (app.proxyVar && pathname === app.basePath + '/api/v1/messages') return handleApi(req, res, ip, app);
+  let rel;
+  try { rel = decodeURIComponent(pathname.slice(app.basePath.length + 1)); } catch { return send(res, 400, 'Bad request'); }
+  return handleStatic(req, res, app, rel);
 }
 
 function start() {
@@ -247,37 +282,75 @@ function start() {
   server.headersTimeout = 131000;
   server.on('error', e => { log('fatal', e.code || '', e.message); process.exit(1); });
   server.listen(cfg.port, cfg.host, () => {
-    log('start', `v${VERSION}`, `http://${cfg.host}:${cfg.port}${cfg.basePath}/`, `key=${getKey() ? 'ok' : 'MISSING'}`,
-      `upstream=${new URL(cfg.upstream).host}`, `model=${cfg.model || 'from app'}`,
-      `auth=${cfg.auth ? 'on' : 'off'}`, `autoUpdate=${cfg.autoUpdate.enabled ? cfg.autoUpdate.repo + '@' + cfg.autoUpdate.branch : 'off'}`);
+    log('start', `v${VERSION}`, `http://${cfg.host}:${cfg.port}/`, `key=${getKey() ? 'ok' : 'MISSING'}`,
+      `upstream=${new URL(cfg.upstream).host}`, `model=${cfg.model || 'from app'}`, `auth=${cfg.auth ? 'on' : 'off'}`,
+      `apps=${cfg.apps.map(a => a.basePath + (a.proxyVar ? '(ai)' : '')).join(',')}`);
   });
-  if (cfg.autoUpdate.enabled) startUpdater();
+  startSync();
 }
 
-// ---------------------------------------------------------------- auto-deploy from GitHub
-const deployState = { sha: null, rejected: null, at: null };
-const stateFile = () => path.join(cfg.appDir, '.deploy-state.json');
-function saveState() { try { fs.writeFileSync(stateFile(), JSON.stringify(deployState)); } catch (e) { log('deploy', 'could not save state:', e.message); } }
+// ---------------------------------------------------------------- GitHub mirror
+// Each app mirrors its repo's branch. Checks use ETags, so "nothing changed" costs
+// no GitHub rate limit; only files whose content changed are downloaded.
+const syncState = {};      // name -> { tree, etag, files: {path: blobSha}, rejected, error, at }
+let ghPausedUntil = 0;
 
-function validateApp(text) {
-  if (text.length < 1000) return 'file too small';
-  if (!/<\/html>\s*$/i.test(text)) return 'not a complete HTML file';
-  if (!text.includes('FORESIGHT_PROXY')) return 'missing server-proxy support (FORESIGHT_PROXY)';
-  if (KEY_SCAN_RE.test(text)) return 'contains an API key';
-  return null;
+const stateFile = app => path.join(app.appDir, '.deploy-state.json');
+function loadSyncState(app) {
+  try { syncState[app.name] = Object.assign({ files: {} }, readJson(stateFile(app)), { error: null }); }
+  catch { syncState[app.name] = { tree: null, etag: null, files: {}, rejected: null, error: null, at: null }; }
+}
+function saveSyncState(app) {
+  const s = syncState[app.name];
+  try { fs.writeFileSync(stateFile(app), JSON.stringify({ tree: s.tree, etag: s.etag, files: s.files, rejected: s.rejected, at: s.at })); }
+  catch (e) { log('deploy', app.name, 'could not save state:', e.message); }
 }
 
-function ghHeaders(accept) {
-  const h = { Accept: accept, 'User-Agent': 'foresight-studio-updater', 'X-GitHub-Api-Version': '2022-11-28' };
-  if (cfg.autoUpdate.tokenFile) {
-    try { const t = fs.readFileSync(cfg.autoUpdate.tokenFile, 'utf8').replace(/^\uFEFF/, '').trim(); if (t) h.Authorization = 'Bearer ' + t; } catch { /* no token */ }
+function ghHeaders(accept, etag) {
+  const h = { Accept: accept, 'User-Agent': 'xperion-app-server', 'X-GitHub-Api-Version': '2022-11-28' };
+  if (etag) h['If-None-Match'] = etag;
+  if (cfg.github.tokenFile) {
+    try { const t = fs.readFileSync(cfg.github.tokenFile, 'utf8').replace(/^\uFEFF/, '').trim(); if (t) h.Authorization = 'Bearer ' + t; } catch { /* no token */ }
   }
   return h;
 }
 
-async function atomicWrite(file, text) {
+async function ghFetch(url, accept, etag, timeoutMs) {
+  const r = await fetch(url, { headers: ghHeaders(accept, etag), signal: AbortSignal.timeout(timeoutMs || 30000) });
+  if ((r.status === 403 || r.status === 429) && r.headers.get('x-ratelimit-remaining') === '0') {
+    const reset = Number(r.headers.get('x-ratelimit-reset')) * 1000;
+    ghPausedUntil = reset > Date.now() ? reset : Date.now() + 15 * 60000;
+    throw new Error(`GitHub rate limit reached; pausing until ${new Date(ghPausedUntil).toISOString()}`);
+  }
+  return r;
+}
+
+function excluded(p, patterns) {
+  if (p.split('/').some(s => s.startsWith('.'))) return true;
+  return patterns.some(x => (x.endsWith('/') ? p.startsWith(x) : p === x));
+}
+function safeRelPath(p) {
+  const segs = p.split('/');
+  return !segs.some(s => !s || s === '..' || s.startsWith('.') || /[\\\0:*?"<>|]/.test(s));
+}
+const gitBlobSha = buf => crypto.createHash('sha1').update(`blob ${buf.length}\0`).update(buf).digest('hex');
+
+function validateApp(app, files) {
+  const idx = files.get('index.html');
+  if (!idx) return 'no index.html in the repo';
+  const html = idx.toString('utf8');
+  if (!/<\/html>\s*$/i.test(html)) return 'index.html is not a complete HTML file';
+  if (app.proxyVar && !html.includes(app.proxyVar)) return `index.html lacks server-proxy support (${app.proxyVar})`;
+  for (const [p, buf] of files) {
+    if (TEXT_EXT.has(path.extname(p).toLowerCase()) && KEY_SCAN_RE.test(buf.toString('utf8'))) return `${p} contains an API key`;
+  }
+  return null;
+}
+
+async function atomicWrite(file, buf) {
+  await fsp.mkdir(path.dirname(file), { recursive: true });
   const tmp = path.join(path.dirname(file), '.' + path.basename(file) + '.tmp');
-  await fsp.writeFile(tmp, text, 'utf8');
+  await fsp.writeFile(tmp, buf);
   for (let i = 0; ; i++) {
     try { await fsp.rename(tmp, file); return; }
     catch (e) {
@@ -287,54 +360,96 @@ async function atomicWrite(file, text) {
   }
 }
 
-async function checkForUpdate() {
-  const u = cfg.autoUpdate, api = u.apiBase.replace(/\/+$/, '');
-  const r = await fetch(`${api}/repos/${u.repo}/commits/${encodeURIComponent(u.branch)}`,
-    { headers: ghHeaders('application/vnd.github+json'), signal: AbortSignal.timeout(20000) });
+async function syncApp(app) {
+  const st = syncState[app.name];
+  const api = cfg.github.apiBase.replace(/\/+$/, '');
+  const r = await ghFetch(`${api}/repos/${app.repo}/git/trees/${encodeURIComponent(app.branch)}?recursive=1`,
+    'application/vnd.github+json', st.etag);
+  if (r.status === 304) return;
   if (!r.ok) {
-    const hint = r.status === 404 ? ' (private repo? add a token)' : (r.status === 403 || r.status === 429) ? ' (GitHub rate limit)' : '';
-    throw new Error(`GitHub returned ${r.status}${hint}`);
+    const hint = r.status === 404 ? ' (private repo? add a GitHub token in setup)' : '';
+    throw new Error(`GitHub returned ${r.status} for ${app.repo}${hint}`);
   }
-  const sha = (await r.json()).sha;
-  if (!sha || sha === deployState.sha || sha === deployState.rejected) return;
-  const filePath = u.path.split('/').map(encodeURIComponent).join('/');
-  const f = await fetch(`${api}/repos/${u.repo}/contents/${filePath}?ref=${sha}`,
-    { headers: ghHeaders('application/vnd.github.raw'), signal: AbortSignal.timeout(30000) });
-  if (!f.ok) throw new Error(`GitHub returned ${f.status} for ${u.path}`);
-  const text = await f.text();
-  const bad = validateApp(text);
-  if (bad) { deployState.rejected = sha; saveState(); log('deploy', 'skipped', sha.slice(0, 7), '-', bad); return; }
-  const target = path.join(cfg.appDir, 'index.html');
-  let current = '';
-  try { current = await fsp.readFile(target, 'utf8'); } catch { /* first deploy */ }
-  if (current !== text) { await atomicWrite(target, text); log('deploy', 'updated index.html to', sha.slice(0, 7)); }
-  else log('deploy', 'in sync at', sha.slice(0, 7));
-  Object.assign(deployState, { sha, rejected: null, at: new Date().toISOString() });
-  saveState();
+  const tree = await r.json();
+  const etag = r.headers.get('etag');
+  if (tree.sha === st.tree) { Object.assign(st, { etag, rejected: null, error: null }); saveSyncState(app); return; }
+  if (tree.sha === st.rejected) { st.etag = etag; saveSyncState(app); return; }
+
+  const wanted = (tree.tree || []).filter(e => e.type === 'blob' && e.mode !== '120000' && !excluded(e.path, app.exclude));
+  for (const e of wanted) if (!safeRelPath(e.path)) throw new Error(`unsafe path in repo: ${e.path}`);
+  const tooBig = wanted.filter(e => e.size > 100 * 1024 * 1024);
+  if (tooBig.length) throw new Error(`files over 100 MB can't be mirrored: ${tooBig.map(e => e.path).join(', ')}`);
+
+  // Download only what changed, verifying each file against its git hash.
+  const files = new Map(), changedPaths = new Set();
+  for (const e of wanted) {
+    const local = path.join(app.appDir, ...e.path.split('/'));
+    if (st.files[e.path] === e.sha && fs.existsSync(local)) {
+      if (TEXT_EXT.has(path.extname(e.path).toLowerCase())) files.set(e.path, await fsp.readFile(local));   // for validation
+      continue;
+    }
+    const b = await ghFetch(`${api}/repos/${app.repo}/git/blobs/${e.sha}`, 'application/vnd.github.raw', null, 180000);
+    if (!b.ok) throw new Error(`GitHub returned ${b.status} for ${e.path}`);
+    const buf = Buffer.from(await b.arrayBuffer());
+    if (gitBlobSha(buf) !== e.sha) throw new Error(`download of ${e.path} was corrupted`);
+    files.set(e.path, buf);
+    changedPaths.add(e.path);
+  }
+  const bad = validateApp(app, files);
+  if (bad) {
+    Object.assign(st, { rejected: tree.sha, etag, error: `refused ${tree.sha.slice(0, 7)}: ${bad}` });
+    saveSyncState(app);
+    log('deploy', app.name, 'skipped', tree.sha.slice(0, 7), '-', bad);
+    return;
+  }
+
+  // Write changed files, index.html last so the page never references files that aren't there yet.
+  const changed = [...files.entries()].filter(([p]) => changedPaths.has(p)).sort(([a], [b]) => (a === 'index.html') - (b === 'index.html'));
+  for (const [p, buf] of changed) await atomicWrite(path.join(app.appDir, ...p.split('/')), buf);
+  const keep = new Set(wanted.map(e => e.path));
+  const removed = Object.keys(st.files).filter(p => !keep.has(p));
+  for (const p of removed) await fsp.rm(path.join(app.appDir, ...p.split('/')), { force: true });
+
+  st.files = Object.fromEntries(wanted.map(e => [e.path, e.sha]));
+  Object.assign(st, { tree: tree.sha, etag, rejected: null, error: null, at: new Date().toISOString() });
+  saveSyncState(app);
+  log('deploy', app.name, changed.length || removed.length
+    ? `updated to ${tree.sha.slice(0, 7)} (${changed.length} file(s) written${removed.length ? `, ${removed.length} removed` : ''})`
+    : `in sync at ${tree.sha.slice(0, 7)}`);
 }
 
-function startUpdater() {
-  try { Object.assign(deployState, readJson(stateFile())); } catch { /* first run */ }
-  let lastErr = '';
-  const every = Math.max(5, Number(cfg.autoUpdate.intervalSeconds) || 120) * 1000;
+function startSync() {
+  const apps = cfg.apps.filter(a => a.repo);
+  for (const a of cfg.apps) loadSyncState(a);
+  if (!apps.length) return;
+  const lastErr = {};
+  const every = Math.max(5, Number(cfg.github.intervalSeconds) || 120) * 1000;
   const run = async () => {
-    try { await checkForUpdate(); lastErr = ''; }
-    catch (e) { const m = (e && e.message) || String(e); if (m !== lastErr) log('deploy', 'check failed:', m); lastErr = m; }
-    finally { setTimeout(run, every); }
+    for (const app of apps) {
+      if (Date.now() < ghPausedUntil) break;
+      try { await syncApp(app); lastErr[app.name] = ''; if (!syncState[app.name].rejected) syncState[app.name].error = null; }
+      catch (e) {
+        const m = (e && e.message) || String(e);
+        syncState[app.name].error = m;
+        if (m !== lastErr[app.name]) log('deploy', app.name, 'check failed:', m);
+        lastErr[app.name] = m;
+      }
+    }
+    setTimeout(run, every);
   };
-  setTimeout(run, 3000);
+  setTimeout(run, 2000);
 }
 
 // ---------------------------------------------------------------- CLI
 function selfCheck() {
   const problems = [];
-  const idx = path.join(cfg.appDir, 'index.html');
-  if (!fs.existsSync(idx)) problems.push(`index.html not found in ${cfg.appDir}`);
-  else { const bad = validateApp(fs.readFileSync(idx, 'utf8')); if (bad) problems.push(`index.html: ${bad}`); }
-  if (!getKey()) problems.push(`no valid API key in ${cfg.keyFile}`);
+  if (cfg.apps.some(a => a.proxyVar) && !getKey()) problems.push(`no valid API key in ${cfg.keyFile}`);
   if (cfg.auth && !(cfg.auth.user && cfg.auth.salt && cfg.auth.hash)) problems.push('auth settings incomplete');
+  for (const a of cfg.apps) {
+    if (!a.repo && !fs.existsSync(path.join(a.appDir, 'index.html'))) problems.push(`${a.name}: no repo and no index.html in ${a.appDir}`);
+  }
   if (problems.length) { problems.forEach(p => console.error('FAIL ' + p)); process.exit(1); }
-  console.log(`OK config, key and app look good (port ${cfg.port}, path ${cfg.basePath}/)`);
+  console.log(`OK config and key look good (${cfg.apps.length} app(s): ${cfg.apps.map(a => a.basePath + '/').join(' ')})`);
 }
 
 function hashPassword() {

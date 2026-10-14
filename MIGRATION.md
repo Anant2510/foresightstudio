@@ -1,139 +1,109 @@
-# Foresight Studio — GitHub Pages → xPerion Azure VM
+# xPerion demo apps on the Azure VM
 
-**VM:** `xPerion2` · Windows Server 2025 · Central India · Standard_B2as_v2
-**Target address:** `https://xperion2.centralindia.cloudapp.azure.com/foresightstudio/` (free Azure name; see Phase 2)
+**VM:** `xPerion2` · Windows Server 2025 · Central India
 **AI Engine:** Claude in Microsoft Foundry, `dxp-ai-6530-resource`, deployment `claude-sonnet-5-5`
 
-## What changes
+| App | Address | GitHub repo | AI |
+|---|---|---|---|
+| Foresight Studio | https://xperion2.centralindia.cloudapp.azure.com/foresightstudio/ | `anant2510/foresightstudio` | Yes |
+| CareAI | https://xperion2.centralindia.cloudapp.azure.com/careai/ | `anant2510/CareAI` | — |
+| VoyagerAI | https://xperion2.centralindia.cloudapp.azure.com/voyagerai/ | `anant2510/VoyagerAI` | — |
+| WealthAI | https://xperion2.centralindia.cloudapp.azure.com/wealthai/ | `anant2510/wealthai` | — |
+| IntelliSight (WestJet / Fifth Third AA dashboard) | https://xperion2.centralindia.cloudapp.azure.com/westjet-aa-dashboard/ | `anant2510/westjet-aa-dashboard` | Yes |
 
-| | GitHub Pages (today) | Azure VM (after) |
-|---|---|---|
-| API key | Anthropic key in `config.js`, readable by anyone who opens the page | Azure Foundry key in `C:\xperion\secrets`, readable only by the app server |
-| AI calls | Browser → Anthropic API | Browser → VM → Claude in Microsoft Foundry, rate-limited per visitor |
-| Billing | Anthropic account | Coforge Azure subscription |
-| HTTPS | GitHub | Caddy with a free Let's Encrypt certificate that renews itself |
-| Deploy | Push to `main` → Pages | Push to `main` → VM picks it up within ~2 minutes |
-| After a reboot | — | Starts on its own (Windows service + startup task) |
+Old-style capitalised paths also work: `/CareAI/` forwards to `/careai/`.
+
+## How it works
 
 ```
 Visitor ──HTTPS──▶ Caddy (80/443) ──▶ App server, Node (127.0.0.1:8790) ──▶ Foundry: dxp-ai-6530-resource
-                                         │  serves the app, adds the API key,      /anthropic/v1/messages
-                                         │  pins the model to claude-sonnet-5-5,
-                                         │  rate-limits, optional login
-                                         └─ checks GitHub every 2 min for a new index.html
+                                        │  serves every app at its own path
+                                        │  AI apps: adds the key, pins the model, rate-limits per visitor
+                                        └─ mirrors each app's GitHub repo every 2 minutes
 ```
 
-The updated `index.html` works on both Pages and the VM, so Pages keeps running until you cut over in Phase 6.
+- **Deploying** is unchanged: push to an app's `main` branch, and it's live within about 2 minutes. Only changed files are downloaded, each one is checked against its git hash, and `index.html` is written last.
+- **Safety checks:** an update is refused, and the last good version keeps serving, if any text file contains an Anthropic key, or if an AI app's `index.html` lacks server-proxy support. The reason shows in the log.
+- **The list of apps** lives in `deploy/windows/apps.json` in the `foresightstudio` repo.
 
 ---
 
-## Phase 0 — VM check ✅ done
+## This update: adding four apps
 
-Windows Server 2025, ports 80/443 free, no IIS, Node 24 installed, Anthropic reachable.
-
-## Phase 1 — Push the updated repo
-
-Replace the repo contents with this package and push to `main`. Pages redeploys as usual.
-
-## Phase 2 — Azure and Anthropic prep (portal, ~5 min)
-
-1. **Foundry API key.** Foundry portal → your `claude-sonnet-5-5` deployment → Details → **Key** (or Azure portal → `dxp-ai-6530-resource` → Keys and Endpoint). Keep it handy for setup; don't paste it into chats or files.
-2. **Open the ports.** VM `xPerion2` → Networking → *Add inbound port rule*: TCP `80,443`, source *Any*, action *Allow*. (Restrict the source to Coforge/client ranges if the demo is invite-only.)
-3. **Give the VM a name.** VM → Overview → *DNS name: Not configured* → enter `xperion2` → Save. You get `xperion2.centralindia.cloudapp.azure.com`, which is needed for the HTTPS certificate.
-
-## Phase 3 — Get the kit onto the VM
-
-On the VM, in **PowerShell as Administrator**:
+1. **WestJet dashboard repo.** Upload the patched `index.html` to `anant2510/westjet-aa-dashboard`, replacing the old one. It keeps working on GitHub Pages; on the VM it uses the server's AI proxy.
+2. **foresightstudio repo.** Upload the `deploy` folder and `MIGRATION.md`, replacing the old ones. This brings the multi-app server, setup, app list and redirect workflow.
+3. **VM, in PowerShell as Administrator:**
 
 ```powershell
+Remove-Item C:\xperion-src -Recurse -Force
 Invoke-WebRequest https://github.com/anant2510/foresightstudio/archive/refs/heads/main.zip -OutFile "$env:TEMP\fs.zip" -UseBasicParsing
 Expand-Archive "$env:TEMP\fs.zip" C:\xperion-src -Force
 cd C:\xperion-src\foresightstudio-main
+powershell -ExecutionPolicy Bypass -File .\deploy\windows\setup.ps1 -Domain xperion2.centralindia.cloudapp.azure.com -Email anant.2.singh@coforge.com
 ```
 
-If the repo is private, copy the zip into the VM over Remote Desktop instead and unzip it to the same place.
+Setup carries over the Foundry endpoint, model and key from the Foresight install. Answer **Y** to keeping the key. It moves Foresight into the new layout, downloads all five apps from GitHub (the WestJet datasets take a minute), and tests each one. From now on it also remembers the domain, so later runs need no options.
 
-## Phase 4 — Run setup
+## Cutover: retire the GitHub Pages copies
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\deploy\windows\setup.ps1 -Domain xperion2.centralindia.cloudapp.azure.com -Email <your-email> -Upstream https://dxp-ai-6530-resource.services.ai.azure.com/anthropic -Model claude-sonnet-5-5
-```
+**Do this now for the two AI apps.** Their Pages sites publish an Anthropic key.
 
-`-Upstream` and `-Model` are remembered, so later re-runs don't need them. Leave both out to use the Anthropic API directly instead.
+1. In the repo, open `.github/workflows/deploy.yml` → pencil icon → replace the contents with `deploy/cutover/deploy.yml` from the foresightstudio repo (use **Copy raw file**) → commit.
+2. Wait for the green tick under **Actions**, then confirm the github.io link redirects to the VM.
+3. **Settings → Secrets and variables → Actions → Secrets**: delete `FORESIGHT_KEY` (foresightstudio) or `INTELLISIGHT_KEY` (westjet-aa-dashboard).
+4. Revoke those keys in the Anthropic Console.
 
-It asks for three things: the Foundry API key (hidden as you paste), whether to add a username/password, and a GitHub token if the repo is private. Then it:
+**Optional for CareAI, VoyagerAI and WealthAI.** These have no secrets. To redirect them:
+1. Create `.github/workflows/deploy.yml` with the same contents.
+2. Set **Settings → Pages → Source** to **GitHub Actions**.
 
-- installs the app server to `C:\xperion` and locks the folders down (the key file is readable only by the app server)
-- registers the app server to start with Windows, running under the low-privilege LOCAL SERVICE account
-- opens Windows Firewall for 80/443
-- downloads Caddy (checksum-verified), sets it up as the `xperion-web` service and gets the certificate
-- tests the page, the absence of any key in the page, and a live AI call
+Or simply leave their Pages sites running.
 
-Finish line: green **"Foresight Studio is live"**. On your laptop, open the URL, confirm the landing page shows **AI Engine Ready**, and run one demo creative.
+Update links in decks, one-pagers, demo scripts and bookmarks to the addresses in the table above.
 
-Security check from your laptop. It should show the `FORESIGHT_PROXY` line and no key:
+## Adding another app later
 
-```powershell
-curl.exe -s https://xperion2.centralindia.cloudapp.azure.com/foresightstudio/config.js
-```
-
-No DNS name yet? Run setup without `-Domain` to go live on `http://<public-ip>/foresightstudio/` straight away, then re-run with `-Domain` later. It keeps your key and settings.
-
-## Phase 5 — Confirm auto-deploy
-
-Push any small change to `main`. Within about 2 minutes, this log on the VM shows `deploy updated index.html to <commit>`:
-
-```powershell
-Get-Content C:\xperion\logs\foresight-server.log -Tail 20
-```
-
-It refuses to deploy a file that contains an API key or lacks server-proxy support, and logs why.
-
-## Phase 6 — Cutover
-
-1. GitHub → Settings → Secrets and variables → Actions → **Variables** → add `FORESIGHT_URL` = `https://xperion2.centralindia.cloudapp.azure.com/foresightstudio/`.
-2. Copy `deploy/cutover/deploy.yml` over `.github/workflows/deploy.yml` and push. The old github.io link now redirects to the VM. Query strings are dropped, so old `?key=` links stop carrying keys.
-3. Delete the `FORESIGHT_KEY` repo secret.
-4. Revoke the old Anthropic key (the one GitHub Pages used) in the Anthropic Console. The VM doesn't use it.
-5. Update the link in the gist deck, cheat sheet, demo script and bookmarks.
+1. The repo needs an `index.html` at its root. Single-file and React-from-CDN apps work as they are. For apps published with `npm run deploy` (like the Emirates VoyagerAI demo), use `"branch": "gh-pages"`, which holds the built files. The app's name in `apps.json` should match the path its build expects.
+2. If the app calls the AI Engine directly from the browser, it needs the same small proxy patch as Foresight and IntelliSight, plus a `proxyVar` entry.
+3. Add a line to `deploy/windows/apps.json`, push, then re-download and re-run setup on the VM.
 
 ---
 
 ## Rollback
-
-Until Phase 6, Pages is untouched, so you can share the old link. To remove the VM setup:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\deploy\windows\uninstall.ps1              # keeps C:\xperion
 powershell -ExecutionPolicy Bypass -File .\deploy\windows\uninstall.ps1 -RemoveFiles # deletes it too
 ```
 
+GitHub Pages copies keep working until you switch them to redirects.
+
 ## Day-2 (PowerShell as Administrator on the VM)
 
 | Task | Command |
 |---|---|
-| Health | `curl.exe -s http://127.0.0.1:8790/healthz` |
-| Status | `Get-ScheduledTask "xPerion Foresight Server" \| Get-ScheduledTaskInfo` and `Get-Service xperion-web` |
-| App log | `Get-Content C:\xperion\logs\foresight-server.log -Tail 50` |
+| Health of every app | `curl.exe -s http://127.0.0.1:8790/healthz` |
+| Status | `Get-ScheduledTask "xPerion App Server" \| Get-ScheduledTaskInfo` and `Get-Service xperion-web` |
+| App server log (deploys, AI calls) | `Get-Content C:\xperion\logs\app-server.log -Tail 50` |
 | Caddy log | `Get-Content C:\xperion\logs\caddy.log -Tail 50` |
-| Restart app server | `Stop-ScheduledTask "xPerion Foresight Server"; Start-ScheduledTask "xPerion Foresight Server"` |
+| Restart app server | `Stop-ScheduledTask "xPerion App Server"; Start-ScheduledTask "xPerion App Server"` |
 | Restart Caddy | `Restart-Service xperion-web` |
 | Rotate the key | Re-run setup and answer `n` to keeping the key (takes effect without a restart) |
-| Add/remove the login | Re-run setup and choose |
-| Change the rate limit | Edit `rateLimit` in `C:\xperion\foresightstudio\server\config.json`, then restart the app server |
+| Add/remove the login | Re-run setup and choose (applies to all apps) |
+| Change the rate limit | Edit `rateLimit` in `C:\xperion\server\config.json`, then restart the app server |
 | Switch model / deployment | Re-run setup with `-Model <deployment-name>` |
-| Switch AI endpoint | Re-run setup with `-Upstream <url>` (for example `https://api.anthropic.com`) and answer `n` to keeping the key |
+| Switch AI endpoint | Re-run setup with `-Upstream <url>` and answer `n` to keeping the key |
 | Update Caddy | Re-run setup with `-UpdateCaddy` |
-| Host another xPerion demo | Add a `handle /<app>* { reverse_proxy 127.0.0.1:<port> }` block in `C:\xperion\caddy\Caddyfile`, then `Restart-Service xperion-web` |
 
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Setup stalls at "Waiting for the HTTPS certificate" | Ports 80/443 closed in the NSG, or DNS name not set | Phase 2, then check `caddy.log` and re-run setup |
+| Setup: "app not deployed: GitHub returned 404" | Repo name wrong in `apps.json`, or a private repo | Fix the name, or re-run setup and paste a read-only GitHub token |
+| Log: "refused …: lacks server-proxy support" | An AI app's repo still has the old `index.html` | Upload the patched `index.html` to that repo |
+| Log: "refused …: contains an API key" | A key was committed to the repo | Remove it, push, and revoke that key |
+| Log: "GitHub rate limit reached" | Many checks from a public repo without a token | Wait (it resumes on its own) or add a token in setup |
 | Landing shows "AI Engine unavailable: 401" | Key wrong or revoked | Re-run setup with a valid key |
-| "AI Engine unavailable: 404" | Foundry deployment name doesn't match | Re-run setup with the exact `-Model` name from the Foundry portal |
-| "AI Engine unavailable: 502" | VM can't reach the Foundry endpoint | Check outbound rules, or whether the resource only allows private network access |
+| "AI Engine unavailable: 404" | Foundry deployment name doesn't match | Re-run setup with the exact `-Model` name |
 | "429 Too many requests" | Rate limit (60/min per visitor, burst 30) | Wait a minute or raise the limit |
-| A push isn't live after 5 minutes | GitHub unreachable, private repo without a token, or file refused | App log shows the reason |
-| Site down after a reboot | App server task not running | Check status and the app log; the task revives itself within a minute |
+| Setup stalls at the HTTPS certificate | Ports 80/443 closed in the NSG, or DNS name not set | Fix in the Azure portal, then check `caddy.log` |

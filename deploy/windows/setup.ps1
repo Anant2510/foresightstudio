@@ -1,28 +1,28 @@
 <#
 .SYNOPSIS
-  Foresight Studio - one-time setup on the xPerion Azure VM (Windows Server).
+  xPerion VM - set up or update the demo apps hosted on this Azure VM (Windows Server).
 
 .DESCRIPTION
+  Reads deploy\windows\apps.json (which apps, which GitHub repos, which use AI), then:
   1. Checks the VM (admin rights, Node, free ports, outbound access)
-  2. Asks for the Anthropic API key (and optional login / GitHub token)
+  2. Asks for the AI API key (and optional login / GitHub token)
   3. Installs the app server to C:\xperion and locks down permissions
   4. Registers the app server to start with Windows (runs as LOCAL SERVICE)
+     and waits for every app to download from GitHub
   5. Opens Windows Firewall for 80/443
   6. Installs Caddy as the HTTPS front door (Windows service)
-  7. Runs smoke tests
+  7. Runs smoke tests for every app
 
-  Safe to re-run: keeps the stored key, login and token unless you replace them.
+  Safe to re-run: keeps the stored key, login, token, endpoint and model unless you
+  replace them, and remembers -Domain, -Email, -Upstream and -Model for later runs.
+  Also upgrades a single-app (Foresight-only) install from the first version.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\deploy\windows\setup.ps1 -Domain xperion2.centralindia.cloudapp.azure.com -Email you@coforge.com
 
 .EXAMPLE
-  Claude in Microsoft Foundry instead of the Anthropic API:
+  Claude in Microsoft Foundry instead of the Anthropic API (remembered for later runs):
   ... setup.ps1 -Domain <name> -Upstream https://<resource>.services.ai.azure.com/anthropic -Model <deployment-name>
-
-.EXAMPLE
-  powershell -ExecutionPolicy Bypass -File .\deploy\windows\setup.ps1
-  (no domain yet: serves plain HTTP on port 80 by IP address)
 #>
 [CmdletBinding()]
 param(
@@ -30,11 +30,9 @@ param(
   [string]$Email = "",
   [string]$Root = "C:\xperion",
   [int]$Port = 8790,
-  [string]$Repo = "anant2510/foresightstudio",
-  [string]$Branch = "main",
   [string]$Upstream = "",   # default https://api.anthropic.com; or https://<resource>.services.ai.azure.com/anthropic
-  [string]$Model = "",      # pin every call to this model / Foundry deployment name
-  [switch]$NoAutoUpdate,
+  [string]$Model = "",      # pin every AI call to this model / Foundry deployment name
+  [string]$AppsFile = "",   # default: apps.json next to this script
   [switch]$UpdateCaddy,
   [string]$CaddyExe = ""
 )
@@ -47,29 +45,31 @@ $OutputEncoding = $Utf8NoBom
 
 # ------------------------------------------------------------------ paths
 $KitDir     = $PSScriptRoot
-$RepoDir    = Split-Path -Parent (Split-Path -Parent $KitDir)
-$AppSrc     = Join-Path $RepoDir "index.html"
 $ServerSrc  = Join-Path $KitDir "server.js"
-$FsDir      = Join-Path $Root "foresightstudio"
-$AppDir     = Join-Path $FsDir "app"
-$ServerDir  = Join-Path $FsDir "server"
+if (-not $AppsFile) { $AppsFile = Join-Path $KitDir "apps.json" }
+$ServerDir  = Join-Path $Root "server"
+$AppsDir    = Join-Path $Root "apps"
 $RuntimeDir = Join-Path $Root "runtime"
 $SecretsDir = Join-Path $Root "secrets"
 $LogsDir    = Join-Path $Root "logs"
 $CaddyDir   = Join-Path $Root "caddy"
-$KeyFile    = Join-Path $SecretsDir "anthropic.key"
+$KeyFile    = Join-Path $SecretsDir "ai.key"
 $TokenFile  = Join-Path $SecretsDir "github.token"
 $ConfigFile = Join-Path $ServerDir "config.json"
 $ServerJs   = Join-Path $ServerDir "server.js"
-$ServerLog  = Join-Path $LogsDir "foresight-server.log"
+$ServerLog  = Join-Path $LogsDir "app-server.log"
 $NodeExe    = Join-Path $RuntimeDir "node.exe"
 $CaddyBin   = Join-Path $CaddyDir "caddy.exe"
 $Caddyfile  = Join-Path $CaddyDir "Caddyfile"
-$TaskName   = "xPerion Foresight Server"
+$TaskName   = "xPerion App Server"
 $SvcName    = "xperion-web"
 $FwRule     = "xPerion Web (HTTP/HTTPS)"
 $Curl       = Join-Path $env:SystemRoot "System32\curl.exe"
-$BasePath   = "/foresightstudio"
+# First version (Foresight only) - upgraded and cleaned up by this script
+$LegacyDir    = Join-Path $Root "foresightstudio"
+$LegacyConfig = Join-Path $LegacyDir "server\config.json"
+$LegacyKey    = Join-Path $SecretsDir "anthropic.key"
+$LegacyTask   = "xPerion Foresight Server"
 
 # SIDs, so this works on any Windows display language
 $SidAdmins = "*S-1-5-32-544"; $SidSystem = "*S-1-5-18"; $SidLocalSvc = "*S-1-5-19"; $SidUsers = "*S-1-5-32-545"
@@ -125,34 +125,63 @@ function Get-Listeners([int[]]$Ports) {
   $conns = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $Ports -contains $_.LocalPort }
   foreach ($c in $conns) {
     $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($c.OwningProcess)" -ErrorAction SilentlyContinue
-    $name = "pid $($c.OwningProcess)"; $exe = ""; $cmd = ""
-    if ($p) { $name = $p.Name; $exe = "$($p.ExecutablePath)"; $cmd = "$($p.CommandLine)" }
-    $list += [pscustomobject]@{ Port = $c.LocalPort; Name = $name; Exe = $exe; Cmd = $cmd }
+    $name = "pid $($c.OwningProcess)"; $exe = ""
+    if ($p) { $name = $p.Name; $exe = "$($p.ExecutablePath)" }
+    $list += [pscustomobject]@{ Port = $c.LocalPort; Name = $name; Exe = $exe }
   }
   return $list
 }
 
 function Stop-OurNode {
   Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
-    Where-Object { "$($_.CommandLine)" -like "*$ServerDir*" } |
+    Where-Object { "$($_.CommandLine)" -like "*$ServerDir*" -or "$($_.CommandLine)" -like "*$LegacyDir*" } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 }
+
+function Stop-Task([string]$Name) {
+  if (Get-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue) {
+    Disable-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue | Out-Null
+    Stop-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue
+  }
+}
+
+function Get-Health { $h = Get-Http @("http://127.0.0.1:$Port/healthz"); if ($h.Code -eq "200") { return ($h.Body | ConvertFrom-Json) }; return $null }
 
 # ==================================================================
 Step "1/7  Pre-flight checks"
 # ==================================================================
 $me = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $me.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { Fail "Run PowerShell as Administrator (right-click > Run as administrator)." }
-foreach ($f in @($AppSrc, $ServerSrc)) { if (-not (Test-Path $f)) { Fail "Missing $f. Run this from the foresightstudio repo folder." } }
-$appText = [IO.File]::ReadAllText($AppSrc)
-if ($appText -notmatch 'FORESIGHT_PROXY') { Fail "index.html is the old version (no server-proxy support). Use the updated repo." }
-if ($appText -match 'sk-ant-[A-Za-z0-9_-]{20,}') { Fail "index.html contains an API key. Remove it first." }
+foreach ($f in @($ServerSrc, $AppsFile)) { if (-not (Test-Path $f)) { Fail "Missing $f. Run this from the foresightstudio repo folder." } }
 if (-not (Test-Path $Curl)) { Fail "curl.exe not found in System32." }
-if ($Domain -and $Domain -notmatch '^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$') { Fail "-Domain should be a host name like xperion2.centralindia.cloudapp.azure.com" }
-Ok "Repo looks right: $RepoDir"
+# App list
+try { $manifest = [IO.File]::ReadAllText($AppsFile) | ConvertFrom-Json } catch { Fail "apps.json is not valid JSON: $($_.Exception.Message)" }
+$apps = @($manifest.apps)
+if ($apps.Count -eq 0) { Fail "apps.json lists no apps." }
+$names = @{}
+foreach ($a in $apps) {
+  if ("$($a.name)" -notmatch '^[a-z0-9][a-z0-9-]*$') { Fail "apps.json: name '$($a.name)' must be lowercase letters, digits and dashes." }
+  if ($names.ContainsKey($a.name)) { Fail "apps.json: '$($a.name)' is listed twice." }
+  $names[$a.name] = $true
+  if ("$($a.repo)" -notmatch '^[\w.-]+/[\w.-]+$') { Fail "apps.json: repo for '$($a.name)' must look like owner/name." }
+  if ($a.proxyVar -and "$($a.proxyVar)" -notmatch '^[A-Za-z_$][\w$]*$') { Fail "apps.json: proxyVar for '$($a.name)' must be a JavaScript name." }
+}
+$aiApps = @($apps | Where-Object { $_.proxyVar })
+Ok "$($apps.Count) app(s) in apps.json: $(($apps | ForEach-Object { $_.name }) -join ', ')"
 
+# Previous settings (this version, or the first Foresight-only version)
 $existingCfg = $null
-if (Test-Path $ConfigFile) { try { $existingCfg = [IO.File]::ReadAllText($ConfigFile) | ConvertFrom-Json } catch { } }
+foreach ($p in @($ConfigFile, $LegacyConfig)) {
+  if (-not $existingCfg -and (Test-Path $p)) { try { $existingCfg = [IO.File]::ReadAllText($p) | ConvertFrom-Json } catch { } }
+}
+$isUpgrade = (Test-Path $LegacyDir) -and -not (Test-Path $ConfigFile)
+if ($isUpgrade) { Info "Upgrading the Foresight-only install to the multi-app layout" }
+
+if (-not $Domain -and $existingCfg -and $existingCfg.domain) { $Domain = "$($existingCfg.domain)" }
+if (-not $Email -and $existingCfg -and $existingCfg.email) { $Email = "$($existingCfg.email)" }
+if ($Domain -and $Domain -notmatch '^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$') { Fail "-Domain should be a host name like xperion2.centralindia.cloudapp.azure.com" }
+if ($Domain) { Ok "Domain: $Domain" } else { Warn "No -Domain given: the apps will be served over plain HTTP by IP address." }
+
 if (-not $Upstream) { if ($existingCfg -and $existingCfg.upstream) { $Upstream = "$($existingCfg.upstream)" } else { $Upstream = "https://api.anthropic.com" } }
 $Upstream = ($Upstream.Trim() -replace '/+$', '') -replace '/v1/messages$', '' -replace '/v1$', ''
 $Upstream = $Upstream -replace '/+$', ''
@@ -161,7 +190,7 @@ if (-not $Model -and $existingCfg -and $existingCfg.model) { $Model = "$($existi
 if ($Model -and $Model -notmatch '^[A-Za-z0-9._:-]+$') { Fail "-Model should be a model or deployment name like claude-sonnet-5-5" }
 $isAnthropic = ($Upstream -eq "https://api.anthropic.com")
 $aiName = "Anthropic"; if (-not $isAnthropic) { $aiName = ([Uri]$Upstream).Host }
-$modelNote = "model from the app"; if ($Model) { $modelNote = "model pinned to $Model" }
+$modelNote = "model from each app"; if ($Model) { $modelNote = "model pinned to $Model" }
 Ok "AI endpoint: $Upstream/v1/messages ($modelNote)"
 
 $nodeCmd = Get-Command node -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -173,11 +202,9 @@ $vParts = $nodeVer.TrimStart("v").Split(".")
 if ([int]$vParts[0] -lt 20 -or ([int]$vParts[0] -eq 20 -and [int]$vParts[1] -lt 3)) { Fail "Node $nodeVer is too old. Install Node 22 LTS or newer." }
 Ok "Node $nodeVer"
 
-# Stop a previous install so files and ports are free
-if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-  Disable-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue | Out-Null
-  Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-}
+# Stop the running app server (this version or the first one) so files and the port are free
+Stop-Task $TaskName
+Stop-Task $LegacyTask
 Stop-OurNode
 Start-Sleep -Seconds 1
 
@@ -187,9 +214,11 @@ foreach ($l in (Get-Listeners @(80, 443))) {
 foreach ($l in (Get-Listeners @($Port))) { Fail "Port $Port is used by $($l.Name). Re-run with -Port 8791 (or another free port)." }
 Ok "Ports 80, 443 and $Port are available"
 
-$r = Get-Http @("-I", "$Upstream/v1/messages")
-if ($r.Code -eq "000") { Fail "This VM can't reach $Upstream (outbound 443 blocked, or a private-only endpoint?)." }
-Ok "Outbound access to $aiName works"
+if ($aiApps.Count -gt 0) {
+  $r = Get-Http @("-I", "$Upstream/v1/messages")
+  if ($r.Code -eq "000") { Fail "This VM can't reach $Upstream (outbound 443 blocked, or a private-only endpoint?)." }
+  Ok "Outbound access to $aiName works"
+}
 
 if ($Domain) {
   $dns = Resolve-DnsName $Domain -Type A -ErrorAction SilentlyContinue | Where-Object { $_.IPAddress }
@@ -202,14 +231,15 @@ if ($Domain) {
 # ==================================================================
 Step "2/7  Settings"
 # ==================================================================
-# API key
+# API key (shared by every app that uses AI)
 $key = "$env:FS_API_KEY".Trim()
 $keepKey = $false
-if (-not $key -and (Test-Path $KeyFile)) { $keepKey = YesNo "An API key is already stored on this VM. Keep it?" $true }
+$haveKey = (Test-Path $KeyFile) -or (Test-Path $LegacyKey)
+if ($aiApps.Count -eq 0) { $keepKey = $true }
+elseif (-not $key -and $haveKey) { $keepKey = YesNo "An API key is already stored on this VM. Keep it?" $true }
 if (-not $key -and -not $keepKey) {
   if ($isAnthropic) {
     Write-Host "    Paste the Anthropic API key for this VM (input hidden)."
-    Write-Host "    Tip: create a new key named 'foresight-azure-vm' rather than reusing the GitHub one."
   } else {
     Write-Host "    Paste the API key for $aiName (input hidden)."
     Write-Host "    Find it in the Foundry portal (your deployment > Details > Key) or Azure portal > resource > Keys and Endpoint."
@@ -221,12 +251,12 @@ if (-not $keepKey) {
   if (-not $isAnthropic -and $key -notmatch '^[A-Za-z0-9._~+/=-]{20,}$') { Fail "That doesn't look like an API key (20+ letters/digits, no spaces)." }
 }
 
-# Optional login
+# Optional login (applies to every app)
 $authMode = "off"; $authUser = ""; $authPass = ""
 if ($existingCfg -and $existingCfg.auth) {
   if (YesNo "Login is on (user '$($existingCfg.auth.user)'). Keep it?" $true) { $authMode = "keep" }
   elseif (YesNo "Set a new login instead? (No = turn the login off)" $true) { $authMode = "new" }
-} elseif (YesNo "Require a username/password to open Foresight Studio? (recommended if the link will circulate widely)" $false) {
+} elseif (YesNo "Require a username/password to open the apps? (recommended if links will circulate widely)" $false) {
   $authMode = "new"
 }
 if ($authMode -eq "new") {
@@ -238,47 +268,49 @@ if ($authMode -eq "new") {
   if (-not $Domain) { Warn "Without -Domain the site is plain HTTP, so the password travels unencrypted. Add a domain soon." }
 }
 
-# GitHub auto-deploy
-$autoUpdate = -not $NoAutoUpdate
-$useToken = $false
-if ($autoUpdate) {
-  $gh = Get-Http @("-H", "User-Agent: xperion-setup", "https://api.github.com/repos/$Repo")
-  if ($gh.Code -eq "200") {
-    Ok "GitHub repo $Repo is public: auto-deploy needs no token"
-  } elseif ($gh.Code -eq "404") {
-    $tok = ""
-    if (Test-Path $TokenFile) { $tok = [IO.File]::ReadAllText($TokenFile).Trim() }
-    if ($tok) {
-      $chk = Get-Http @("-H", "User-Agent: xperion-setup", "-H", "Authorization: Bearer $tok", "https://api.github.com/repos/$Repo")
-      if ($chk.Code -ne "200") { $tok = "" }
-    }
-    if (-not $tok) {
-      Write-Host "    $Repo is private (or not found). Paste a fine-grained GitHub token with read-only"
-      Write-Host "    'Contents' access to this repo, or press Enter to skip auto-deploy."
-      $tok = (ToPlain (Read-Host "    GitHub token" -AsSecureString)).Trim()
-      if ($tok) {
-        $chk = Get-Http @("-H", "User-Agent: xperion-setup", "-H", "Authorization: Bearer $tok", "https://api.github.com/repos/$Repo")
-        if ($chk.Code -ne "200") { Fail "GitHub rejected that token (HTTP $($chk.Code))." }
-        $newToken = $tok
-      }
-    }
-    if ($tok) { $useToken = $true; Ok "GitHub token works" } else { $autoUpdate = $false; Warn "Auto-deploy off. Re-run setup later to turn it on." }
-  } else {
-    Warn "Couldn't check GitHub (HTTP $($gh.Code)). Auto-deploy will keep retrying."
+# GitHub access for every repo
+$private = @()
+foreach ($a in $apps) {
+  $gh = Get-Http @("-H", "User-Agent: xperion-setup", "https://api.github.com/repos/$($a.repo)")
+  if ($gh.Code -eq "404") { $private += "$($a.repo)" }
+  elseif ($gh.Code -ne "200") { Warn "Couldn't check $($a.repo) on GitHub (HTTP $($gh.Code)). The server will keep retrying." }
+}
+$useToken = $false; $newToken = ""
+if ($private.Count -gt 0) {
+  $tok = ""; if (Test-Path $TokenFile) { $tok = [IO.File]::ReadAllText($TokenFile).Trim() }
+  $tokOk = $false
+  if ($tok) {
+    $tokOk = $true
+    foreach ($rp in $private) { if ((Get-Http @("-H", "User-Agent: xperion-setup", "-H", "Authorization: Bearer $tok", "https://api.github.com/repos/$rp")).Code -ne "200") { $tokOk = $false } }
   }
+  if (-not $tokOk) {
+    Write-Host "    These repos are private (or don't exist): $($private -join ', ')"
+    Write-Host "    Paste a fine-grained GitHub token with read-only 'Contents' access to them (input hidden)."
+    $tok = (ToPlain (Read-Host "    GitHub token" -AsSecureString)).Trim()
+    if (-not $tok) { Fail "No token given. Make those repos public, add a token, or remove them from apps.json." }
+    foreach ($rp in $private) {
+      $chk = Get-Http @("-H", "User-Agent: xperion-setup", "-H", "Authorization: Bearer $tok", "https://api.github.com/repos/$rp")
+      if ($chk.Code -ne "200") { Fail "That token can't read $rp (HTTP $($chk.Code)). Check the repo name in apps.json and the token's access." }
+    }
+    $newToken = $tok
+  }
+  $useToken = $true
+  Ok "GitHub token works for the private repo(s)"
+} else {
+  Ok "No private repos found: no GitHub token needed"
 }
 Ok "Settings captured"
 
 # ==================================================================
 Step "3/7  Files and permissions"
 # ==================================================================
-foreach ($d in @($Root, $FsDir, $AppDir, $ServerDir, $RuntimeDir, $SecretsDir, $LogsDir, $CaddyDir, (Join-Path $CaddyDir "data"))) {
-  New-Item -ItemType Directory -Force -Path $d | Out-Null
-}
+$dirs = @($Root, $ServerDir, $AppsDir, $RuntimeDir, $SecretsDir, $LogsDir, $CaddyDir, (Join-Path $CaddyDir "data"))
+foreach ($a in $apps) { $dirs += (Join-Path $AppsDir $a.name) }
+foreach ($d in $dirs) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
 # C:\xperion: admins + SYSTEM full, app server (LOCAL SERVICE) read-only
 Set-Acl2 $Root @("/inheritance:r", "/grant:r", "${SidAdmins}:(OI)(CI)F", "${SidSystem}:(OI)(CI)F", "${SidLocalSvc}:(OI)(CI)RX")
-# It may update the app and write logs
-Set-Acl2 $AppDir @("/grant:r", "${SidLocalSvc}:(OI)(CI)M")
+# It mirrors the apps from GitHub and writes logs
+Set-Acl2 $AppsDir @("/grant:r", "${SidLocalSvc}:(OI)(CI)M")
 Set-Acl2 $LogsDir @("/grant:r", "${SidLocalSvc}:(OI)(CI)M", "${SidUsers}:(OI)(CI)RX")
 # Secrets: readable by the app server only; Caddy's TLS keys: admins + SYSTEM only
 Set-Acl2 $SecretsDir @("/inheritance:r", "/grant:r", "${SidAdmins}:(OI)(CI)F", "${SidSystem}:(OI)(CI)F", "${SidLocalSvc}:(OI)(CI)R")
@@ -287,12 +319,13 @@ Ok "Folders under $Root locked down"
 
 Copy-Item $nodeSrc $NodeExe -Force
 Copy-Item $ServerSrc $ServerJs -Force
-Copy-Item $AppSrc (Join-Path $AppDir "index.html") -Force
-Remove-Item (Join-Path $AppDir ".deploy-state.json") -Force -ErrorAction SilentlyContinue   # re-sync with GitHub on start
-Ok "App server, app and Node runtime installed"
+Ok "App server and Node runtime installed"
 
 if (-not $keepKey) { WriteText $KeyFile $key }
+elseif (-not (Test-Path $KeyFile) -and (Test-Path $LegacyKey)) { Move-Item $LegacyKey $KeyFile -Force }
+if ((Test-Path $LegacyKey) -and (Test-Path $KeyFile)) { Remove-Item $LegacyKey -Force }
 if ($newToken) { WriteText $TokenFile $newToken }
+if ($aiApps.Count -gt 0 -and -not (Test-Path $KeyFile)) { Fail "No API key stored. Re-run and paste the key." }
 Ok "Secrets stored in $SecretsDir"
 
 $authObj = $null
@@ -309,15 +342,25 @@ $rate = [ordered]@{ perMinute = 60; burst = 30 }
 if ($existingCfg -and $existingCfg.rateLimit) { $rate = [ordered]@{ perMinute = $existingCfg.rateLimit.perMinute; burst = $existingCfg.rateLimit.burst } }
 $tokenPath = $null; if ($useToken) { $tokenPath = $TokenFile }
 $modelVal = $null; if ($Model) { $modelVal = $Model }
+$domainVal = $null; if ($Domain) { $domainVal = $Domain }
+$emailVal = $null; if ($Email) { $emailVal = $Email }
+$rootRedirect = "/$($apps[0].name)/"; if ($manifest.rootRedirect) { $rootRedirect = "$($manifest.rootRedirect)" }
 
+$cfgApps = @()
+foreach ($a in $apps) {
+  $branch = "main"; if ($a.branch) { $branch = "$($a.branch)" }
+  $pv = $null; if ($a.proxyVar) { $pv = "$($a.proxyVar)" }
+  $cfgApps += [ordered]@{ name = "$($a.name)"; basePath = "/$($a.name)"; appDir = (Join-Path $AppsDir $a.name); repo = "$($a.repo)"; branch = $branch; proxyVar = $pv }
+}
 $cfgObj = [ordered]@{
-  host = "127.0.0.1"; port = $Port; basePath = $BasePath
-  appDir = $AppDir; keyFile = $KeyFile; logFile = $ServerLog
+  host = "127.0.0.1"; port = $Port; domain = $domainVal; email = $emailVal
+  logFile = $ServerLog; keyFile = $KeyFile; rootRedirect = $rootRedirect
   upstream = $Upstream; model = $modelVal; upstreamTimeoutMs = 120000; maxBodyBytes = 5242880
   trustProxy = $true; rateLimit = $rate; auth = $authObj
-  autoUpdate = [ordered]@{ enabled = $autoUpdate; repo = $Repo; branch = $Branch; path = "index.html"; intervalSeconds = 120; tokenFile = $tokenPath; apiBase = "https://api.github.com" }
+  github = [ordered]@{ apiBase = "https://api.github.com"; tokenFile = $tokenPath; intervalSeconds = 120 }
+  apps = $cfgApps
 }
-WriteText $ConfigFile ($cfgObj | ConvertTo-Json -Depth 5)
+WriteText $ConfigFile ($cfgObj | ConvertTo-Json -Depth 6)
 
 $c = Invoke-Native $NodeExe @($ServerJs, "--check")
 if ($c.Code -ne 0) { Fail "Self-check failed:`n$($c.Out)" }
@@ -338,7 +381,7 @@ foreach ($acct in @("NT AUTHORITY\LOCAL SERVICE", "LOCALSERVICE")) {
   try {
     $principal = New-ScheduledTaskPrincipal -UserId $acct -LogonType ServiceAccount -RunLevel Limited
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $triggers -Settings $settings -Principal $principal `
-      -Description "Foresight Studio app server (C:\xperion). Managed by deploy\windows\setup.ps1" -Force | Out-Null
+      -Description "xPerion demo apps server ($Root). Managed by deploy\windows\setup.ps1" -Force | Out-Null
     $registered = $true; $runAs = $acct; break
   } catch { $lastErr = $_.Exception.Message }
 }
@@ -347,17 +390,40 @@ Enable-ScheduledTask -TaskName $TaskName | Out-Null
 Start-ScheduledTask -TaskName $TaskName
 
 $health = $null
-for ($i = 0; $i -lt 25; $i++) {
-  Start-Sleep -Seconds 1
-  $r = Get-Http @("http://127.0.0.1:$Port/healthz")
-  if ($r.Code -eq "200") { $health = $r.Body | ConvertFrom-Json; break }
-}
+for ($i = 0; $i -lt 25 -and -not $health; $i++) { Start-Sleep -Seconds 1; $health = Get-Health }
 if (-not $health) {
   if (Test-Path $ServerLog) { Get-Content $ServerLog -Tail 15 | ForEach-Object { Write-Host "    $_" } }
   Fail "The app server didn't start. See the log lines above ($ServerLog)."
 }
-if (-not $health.keyConfigured) { Fail "The app server can't read the API key ($KeyFile). Check the folder permissions." }
+if ($aiApps.Count -gt 0 -and -not $health.keyConfigured) { Fail "The app server can't read the API key ($KeyFile). Check the folder permissions." }
 Ok "App server running as $runAs on 127.0.0.1:$Port"
+
+Info "Downloading the apps from GitHub (large datasets can take a minute)..."
+$deadline = (Get-Date).AddSeconds(240)
+do {
+  Start-Sleep -Seconds 3
+  $health = Get-Health
+  $pending = @()
+  if ($health) { $pending = @($health.apps | Where-Object { -not $_.synced -and -not $_.error }) }
+} while ($health -and $pending.Count -gt 0 -and (Get-Date) -lt $deadline)
+if (-not $health) { Fail "The app server stopped responding. See $ServerLog" }
+$failed = $false
+$deployed = @{}
+foreach ($a in @($health.apps)) {
+  if ($a.synced -and -not $a.error) { Ok "$($a.name) deployed ($($a.synced.Substring(0, 7)))"; $deployed[$a.name] = $true }
+  elseif ($a.synced) { Warn "$($a.name): serving the last good version; latest change not applied: $($a.error)"; $deployed[$a.name] = $true }
+  elseif ($a.error) { Warn "$($a.name) not deployed: $($a.error)"; $failed = $true }
+  else { Warn "$($a.name) still downloading; it will finish in the background (log: $ServerLog)"; $failed = $true }
+}
+
+if (Get-ScheduledTask -TaskName $LegacyTask -ErrorAction SilentlyContinue) {
+  Unregister-ScheduledTask -TaskName $LegacyTask -Confirm:$false
+  Ok "Removed the old task '$LegacyTask'"
+}
+if (Test-Path $LegacyDir) {
+  Remove-Item $LegacyDir -Recurse -Force -ErrorAction SilentlyContinue
+  if (-not (Test-Path $LegacyDir)) { Ok "Removed the old folder $LegacyDir" } else { Warn "Couldn't fully remove $LegacyDir; delete it later." }
+}
 
 # ==================================================================
 Step "5/7  Windows Firewall"
@@ -415,6 +481,7 @@ $siteAddr = ":80"; if ($Domain) { $siteAddr = $Domain }
 $emailLine = ""; if ($Email) { $emailLine = "    email $Email`n" }
 $cf = @"
 # Generated by deploy\windows\setup.ps1 - re-run setup to change it.
+# Every app is served by the app server; the list of apps lives in deploy\windows\apps.json.
 {
     storage file_system {
         root $(& $fwd $CaddyDir)/data
@@ -435,10 +502,6 @@ $siteAddr {
             roll_keep 5
         }
     }
-    # More xPerion apps can sit beside Foresight Studio later, e.g.:
-    # handle /intellisight* {
-    #     reverse_proxy 127.0.0.1:8791
-    # }
     handle {
         reverse_proxy 127.0.0.1:$Port
     }
@@ -469,71 +532,78 @@ Ok "Caddy running as Windows service '$SvcName'"
 # ==================================================================
 Step "7/7  Smoke tests"
 # ==================================================================
-$failed = $false
 $creds = @(); if ($authMode -eq "new") { $creds = @("-u", "${authUser}:$authPass") }
+$first = "/$($apps[0].name)/"
 if ($Domain) {
   $site = "https://$Domain"
   $route = @("--connect-to", "${Domain}:443:127.0.0.1:443")
-  $r = Get-Http @("--connect-to", "${Domain}:80:127.0.0.1:80", "http://$Domain$BasePath/")
+  $r = Get-Http @("--connect-to", "${Domain}:80:127.0.0.1:80", "http://$Domain$first")
   if ($r.Code -match '^30[178]$') { Ok "HTTP redirects to HTTPS" } else { Warn "Expected a redirect on http://, got HTTP $($r.Code)" }
-  Info "Waiting for the HTTPS certificate (usually under a minute)..."
+  Info "Checking the HTTPS certificate..."
   $code = "000"
   for ($i = 0; $i -lt 18 -and $code -eq "000"; $i++) {
-    $code = (Get-Http ($route + $creds + @("$site$BasePath/"))).Code
+    $code = (Get-Http ($route + $creds + @("$site$first"))).Code
     if ($code -eq "000") { Start-Sleep -Seconds 5 }
   }
+  if ($code -eq "000") { Warn "No HTTPS certificate yet. Check NSG ports 80/443 and the DNS label, then see $LogsDir\caddy.log" }
 } else {
   $site = "http://127.0.0.1"
   $route = @()
 }
 
-$page = Get-Http ($route + $creds + @("$site$BasePath/"))
-if ($authMode -eq "keep") {
-  if ($page.Code -eq "401") { Ok "App is behind the existing login" } else { Warn "Expected 401 from $site$BasePath/, got HTTP $($page.Code)"; $failed = $true }
-} elseif ($page.Code -eq "200" -and $page.Body -match 'FORESIGHT_PROXY') {
-  Ok "App loads: $site$BasePath/"
-} else {
-  Warn "App page returned HTTP $($page.Code) at $site$BasePath/"
-  if ($Domain -and $page.Code -eq "000") { Warn "No certificate yet. Check NSG ports 80/443 and the DNS label, then see $LogsDir\caddy.log" }
-  $failed = $true
-}
+$bodyFile = [IO.Path]::GetTempFileName()
+foreach ($a in $apps) {
+  if (-not $deployed[$a.name]) { continue }
+  $base = "$site/$($a.name)"
+  $page = Get-Http ($route + $creds + @("$base/"))
+  if ($authMode -eq "keep") {
+    if ($page.Code -eq "401") { Ok "$($a.name): behind the existing login" } else { Warn "$($a.name): expected 401, got HTTP $($page.Code)"; $failed = $true }
+    continue
+  }
+  if ($page.Code -eq "200" -and $page.Body -match '</html>') { Ok "$($a.name): page loads" }
+  else { Warn "$($a.name): page returned HTTP $($page.Code) at $base/"; $failed = $true; continue }
+  if (-not $a.proxyVar) { continue }
 
-if ($authMode -ne "keep") {
-  $cfgJs = Get-Http ($route + $creds + @("$site$BasePath/config.js"))
-  if ($cfgJs.Body -match 'FORESIGHT_PROXY' -and $cfgJs.Body -notmatch 'sk-ant-[A-Za-z0-9_-]{20,}') { Ok "config.js has no key in it" }
-  else { Warn "config.js check failed (HTTP $($cfgJs.Code))"; $failed = $true }
+  $cfgJs = Get-Http ($route + $creds + @("$base/config.js"))
+  if ($cfgJs.Body -match [regex]::Escape($a.proxyVar) -and $cfgJs.Body -notmatch 'sk-ant-[A-Za-z0-9_-]{20,}') { Ok "$($a.name): config.js has no key in it" }
+  else { Warn "$($a.name): config.js check failed (HTTP $($cfgJs.Code))"; $failed = $true }
 
-  $appModel = [regex]::Match($appText, 'var _MODEL="([^"]+)"').Groups[1].Value
+  $appModel = ""
+  $idx = Join-Path (Join-Path $AppsDir $a.name) "index.html"
+  if (Test-Path $idx) { $appModel = [regex]::Match([IO.File]::ReadAllText($idx), '\b_?MODEL\s*=\s*[''"]([^''"]+)[''"]').Groups[1].Value }
   if (-not $appModel) { $appModel = "claude-sonnet-4-6" }
-  $bodyFile = [IO.Path]::GetTempFileName()
+  $usedModel = $appModel; if ($Model) { $usedModel = $Model }
   WriteText $bodyFile ('{"model":"' + $appModel + '","max_tokens":5,"messages":[{"role":"user","content":"Reply: ok"}]}')
   $api = Get-Http ($route + $creds + @("-X", "POST", "-H", "content-type: application/json", "-H", "anthropic-version: 2023-06-01",
-                                       "--data-binary", "@$bodyFile", "$site$BasePath/api/v1/messages"))
-  Remove-Item $bodyFile -Force -ErrorAction SilentlyContinue
-  $usedModel = $appModel; if ($Model) { $usedModel = $Model }
-  if ($api.Code -eq "200") { Ok "AI Engine reachable through the server ($aiName, model: $usedModel)" }
+                                       "--data-binary", "@$bodyFile", "$base/api/v1/messages"))
+  if ($api.Code -eq "200") { Ok "$($a.name): AI Engine reachable ($aiName, model: $usedModel)" }
   else {
     $snippet = $api.Body; if ($snippet.Length -gt 300) { $snippet = $snippet.Substring(0, 300) }
-    Warn "AI call returned HTTP $($api.Code): $snippet"
+    Warn "$($a.name): AI call returned HTTP $($api.Code): $snippet"
     if ($api.Code -eq "401") { Warn "401 = $aiName rejected the key. Re-run setup and paste a valid key." }
     if ($api.Code -eq "404" -and -not $isAnthropic) { Warn "404 on Foundry usually means the deployment name is wrong. Re-run with -Model <exact deployment name>." }
     $failed = $true
   }
 }
+Remove-Item $bodyFile -Force -ErrorAction SilentlyContinue
 
 # ------------------------------------------------------------------ summary
-$publicUrl = ""
-if ($Domain) { $publicUrl = "https://$Domain$BasePath/" }
+$publicBase = ""
+if ($Domain) { $publicBase = "https://$Domain" }
 else {
   $ip = (Get-Http @("https://api.ipify.org")).Body.Trim()
-  if ($ip -match '^\d+\.\d+\.\d+\.\d+$') { $publicUrl = "http://$ip$BasePath/" } else { $publicUrl = "http://<vm-public-ip>$BasePath/" }
+  if ($ip -match '^\d+\.\d+\.\d+\.\d+$') { $publicBase = "http://$ip" } else { $publicBase = "http://<vm-public-ip>" }
 }
 Write-Host ""
-if (-not $failed) { Write-Host "  Foresight Studio is live:  $publicUrl" -ForegroundColor Green }
-else { Write-Host "  Setup finished with warnings (see above). Target: $publicUrl" -ForegroundColor Yellow }
+if (-not $failed) { Write-Host "  All apps are live:" -ForegroundColor Green }
+else { Write-Host "  Setup finished with warnings (see above). Apps:" -ForegroundColor Yellow }
+foreach ($a in $apps) {
+  $mark = "  "; if ($deployed[$a.name]) { $mark = "* " }
+  Write-Host "   $mark$publicBase/$($a.name)/"
+}
 Write-Host ""
 Write-Host "  Next:"
-Write-Host "   - Azure NSG must allow inbound TCP 80 and 443 (MIGRATION.md, Phase 2)."
-if ($autoUpdate) { Write-Host "   - Pushes to $Repo@$Branch go live within ~2 minutes (log: $ServerLog)." }
+Write-Host "   - Pushes to each app's repo go live within ~2 minutes (log: $ServerLog)."
+Write-Host "   - Add or remove apps: edit deploy\windows\apps.json, push, re-download and re-run this script."
 Write-Host "   - Rotate the key: re-run this script and answer 'n' to keeping the key."
 if ($failed) { exit 1 }

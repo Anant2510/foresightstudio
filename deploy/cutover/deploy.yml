@@ -1,13 +1,16 @@
 # =====================================================================
-# CUTOVER VERSION of .github/workflows/deploy.yml
-# Copy this over .github/workflows/deploy.yml when the Azure VM is live.
-# GitHub Pages then serves only a redirect to the new address, and no
-# API key is published anywhere on GitHub any more.
+# CUTOVER: turn an app's GitHub Pages site into a redirect to the xPerion VM
 #
-# Needs repo variable FORESIGHT_URL (the new Azure address).
-# Afterwards delete the FORESIGHT_KEY repo secret and revoke that key.
+# Works in any app repo (foresightstudio, westjet-aa-dashboard, CareAI, ...):
+# copy this file over .github/workflows/deploy.yml (create it if the repo has none).
+# Target: https://xperion2.centralindia.cloudapp.azure.com/<repo name in lowercase>/
+# Override with a repo variable XPERION_URL if an app lives somewhere else.
+#
+# Repos that publish Pages "from a branch" (no workflow today) also need:
+#   Settings > Pages > Build and deployment > Source: GitHub Actions
+# Afterwards delete any API-key secret in the repo and revoke that key.
 # =====================================================================
-name: Redirect GitHub Pages to Azure VM
+name: Redirect GitHub Pages to the xPerion VM
 
 on:
   push:
@@ -33,19 +36,21 @@ jobs:
     steps:
       - name: Build redirect page
         env:
-          TARGET: ${{ vars.FORESIGHT_URL }}
+          OVERRIDE: ${{ vars.XPERION_URL || vars.FORESIGHT_URL }}
         run: |
-          [ -n "$TARGET" ] || { echo "::error::Set the FORESIGHT_URL repo variable first"; exit 1; }
+          APP=$(echo "${GITHUB_REPOSITORY#*/}" | tr '[:upper:]' '[:lower:]')
+          TARGET="${OVERRIDE:-https://xperion2.centralindia.cloudapp.azure.com/$APP/}"
+          echo "Redirecting to $TARGET"
           mkdir -p site
           cat > site/index.html <<HTML
           <!doctype html>
           <html lang="en"><head><meta charset="utf-8">
-          <title>Foresight Studio has moved</title>
+          <title>This demo has moved</title>
           <meta name="robots" content="noindex">
           <meta http-equiv="refresh" content="0; url=$TARGET">
           <script>location.replace("$TARGET");</script>
           </head><body style="font-family:Inter,system-ui,sans-serif;color:#082340;padding:48px">
-          <p>Foresight Studio has moved to <a href="$TARGET" style="color:#F15B40">$TARGET</a>.</p>
+          <p>This demo has moved to <a href="$TARGET" style="color:#F15B40">$TARGET</a>.</p>
           </body></html>
           HTML
           cp site/index.html site/404.html

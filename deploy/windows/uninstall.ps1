@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Removes Foresight Studio's server setup from this VM (rollback).
+  Removes the xPerion app hosting setup from this VM (rollback).
 .DESCRIPTION
   Stops and removes the app server task, the Caddy service and the firewall rule.
   Files under C:\xperion (including the stored API key) are kept unless you pass -RemoveFiles.
@@ -12,19 +12,21 @@
 param([string]$Root = "C:\xperion", [switch]$RemoveFiles)
 
 $ErrorActionPreference = "Stop"
-$TaskName = "xPerion Foresight Server"; $SvcName = "xperion-web"; $FwRule = "xPerion Web (HTTP/HTTPS)"
-$ServerDir = Join-Path $Root "foresightstudio\server"
+$SvcName = "xperion-web"; $FwRule = "xPerion Web (HTTP/HTTPS)"
 
 $me = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $me.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { Write-Host "Run PowerShell as Administrator." -ForegroundColor Red; exit 1 }
 
-if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-  Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-  Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
-  Write-Host "  [ok] Removed task '$TaskName'" -ForegroundColor Green
+foreach ($t in @("xPerion App Server", "xPerion Foresight Server")) {
+  if (Get-ScheduledTask -TaskName $t -ErrorAction SilentlyContinue) {
+    Stop-ScheduledTask -TaskName $t -ErrorAction SilentlyContinue
+    Unregister-ScheduledTask -TaskName $t -Confirm:$false
+    Write-Host "  [ok] Removed task '$t'" -ForegroundColor Green
+  }
 }
+$dirs = @((Join-Path $Root "server"), (Join-Path $Root "foresightstudio"))
 Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
-  Where-Object { "$($_.CommandLine)" -like "*$ServerDir*" } |
+  Where-Object { $cl = "$($_.CommandLine)"; ($dirs | Where-Object { $cl -like "*$_*" }).Count -gt 0 } |
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
 if (Get-Service $SvcName -ErrorAction SilentlyContinue) {
@@ -43,4 +45,4 @@ if ($RemoveFiles -and (Test-Path $Root)) {
   if ($a -ceq "YES") { Remove-Item $Root -Recurse -Force; Write-Host "  [ok] Deleted $Root" -ForegroundColor Green }
   else { Write-Host "  Kept $Root" }
 }
-Write-Host "  Done. GitHub Pages is unaffected; the old link still works until cutover."
+Write-Host "  Done. GitHub Pages sites are unaffected unless you switched them to redirects."
