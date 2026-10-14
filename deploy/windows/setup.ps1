@@ -173,7 +173,7 @@ foreach ($a in $apps) {
   }
 }
 $aiApps = @($apps | Where-Object { $_.proxyVar })
-Ok "$($apps.Count) app(s) in apps.json: $(($apps | ForEach-Object { $_.name }) -join ', ')"
+Ok "$($apps.Count) app(s) in $AppsFile`: $(($apps | ForEach-Object { $_.name }) -join ', ')"
 
 # Previous settings (this version, or the first Foresight-only version)
 $existingCfg = $null
@@ -277,8 +277,9 @@ if ($authMode -eq "new") {
 # GitHub access for every repo
 $private = @()
 foreach ($a in $apps) {
-  $gh = Get-Http @("-H", "User-Agent: xperion-setup", "https://api.github.com/repos/$($a.repo)")
-  if ($gh.Code -eq "404") { $private += "$($a.repo)" }
+  # git's own protocol: not subject to GitHub's 60-per-hour REST API limit
+  $gh = Get-Http @("-A", "git/2.45.0", "https://github.com/$($a.repo).git/info/refs?service=git-upload-pack")
+  if ($gh.Code -eq "401" -or $gh.Code -eq "404") { $private += "$($a.repo)" }
   elseif ($gh.Code -ne "200") { Warn "Couldn't check $($a.repo) on GitHub (HTTP $($gh.Code)). The server will keep retrying." }
 }
 $useToken = $false; $newToken = ""
@@ -287,7 +288,7 @@ if ($private.Count -gt 0) {
   $tokOk = $false
   if ($tok) {
     $tokOk = $true
-    foreach ($rp in $private) { if ((Get-Http @("-H", "User-Agent: xperion-setup", "-H", "Authorization: Bearer $tok", "https://api.github.com/repos/$rp")).Code -ne "200") { $tokOk = $false } }
+    foreach ($rp in $private) { if ((Get-Http @("-A", "git/2.45.0", "-u", "x-access-token:$tok", "https://github.com/$rp.git/info/refs?service=git-upload-pack")).Code -ne "200") { $tokOk = $false } }
   }
   if (-not $tokOk) {
     Write-Host "    These repos are private or don't exist yet: $($private -join ', ')"
@@ -296,7 +297,7 @@ if ($private.Count -gt 0) {
     $tok = (ToPlain (Read-Host "    GitHub token" -AsSecureString)).Trim()
     if ($tok) {
       foreach ($rp in $private) {
-        $chk = Get-Http @("-H", "User-Agent: xperion-setup", "-H", "Authorization: Bearer $tok", "https://api.github.com/repos/$rp")
+        $chk = Get-Http @("-A", "git/2.45.0", "-u", "x-access-token:$tok", "https://github.com/$rp.git/info/refs?service=git-upload-pack")
         if ($chk.Code -ne "200") { Fail "That token can't read $rp (HTTP $($chk.Code)). Check the repo name in apps.json and the token's access." }
       }
       $newToken = $tok; $tokOk = $true
