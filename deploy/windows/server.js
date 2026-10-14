@@ -9,7 +9,8 @@
  *    Foundry and adds the API key on the server, so it never reaches the browser
  *  - Optionally pins the model (Foundry: your deployment name)
  *  - Per-IP rate limit, optional login
- *  - Mirrors each app from its GitHub repo (only changed files are downloaded)
+ *  - Mirrors each app from its GitHub repo (only changed files are downloaded;
+ *    change checks don't use GitHub's limited REST API)
  *
  * Usage:  node server.js                 start the server
  *         node server.js --check         validate config and key, then exit
@@ -24,7 +25,7 @@ const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
 
-const VERSION = '2.0.0';
+const VERSION = '2.1.0';
 const KEY_RE = /^[A-Za-z0-9._~+\/=-]{20,}$/;      // Anthropic (sk-ant-...) or Azure Foundry key
 const KEY_SCAN_RE = /sk-ant-[A-Za-z0-9_-]{20,}/;   // what a leaked Anthropic key looks like
 const TEXT_EXT = new Set(['.html', '.htm', '.js', '.mjs', '.css', '.json', '.txt', '.md', '.csv', '.tsv', '.xml', '.svg', '.yml', '.yaml']);
@@ -53,7 +54,7 @@ function loadConfig() {
     maxBodyBytes: 5 * 1024 * 1024, trustProxy: true, auth: null
   }, c);
   out.rateLimit = Object.assign({ perMinute: 60, burst: 30 }, c.rateLimit || {});
-  out.github = Object.assign({ apiBase: 'https://api.github.com', tokenFile: null, intervalSeconds: 120 }, c.github || {});
+  out.github = Object.assign({ apiBase: 'https://api.github.com', webBase: 'https://github.com', rawBase: 'https://raw.githubusercontent.com', tokenFile: null, intervalSeconds: 120 }, c.github || {});
   if (!out.keyFile) throw new Error('config.keyFile is required');
   if (!Array.isArray(c.apps) || !c.apps.length) throw new Error('config.apps must list at least one app');
   const seen = new Set();
@@ -251,7 +252,7 @@ async function route(req, res) {
   const pathname = url.pathname;
   const ip = clientIp(req);
   if (pathname === '/healthz') {
-    const apps = cfg.apps.map(a => ({ name: a.name, path: a.basePath + '/', synced: (syncState[a.name] && syncState[a.name].tree) || null, error: (syncState[a.name] && syncState[a.name].error) || null }));
+    const apps = cfg.apps.map(a => ({ name: a.name, path: a.basePath + '/', synced: (syncState[a.name] && syncState[a.name].commit) || null, error: (syncState[a.name] && syncState[a.name].error) || null }));
     return send(res, 200, JSON.stringify({ ok: true, version: VERSION, keyConfigured: !!getKey(), apps }),
       { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   }
@@ -295,39 +296,65 @@ function start() {
 }
 
 // ---------------------------------------------------------------- GitHub mirror
-// Each app mirrors its repo's branch. Checks use ETags, so "nothing changed" costs
-// no GitHub rate limit; only files whose content changed are downloaded.
-const syncState = {};      // name -> { tree, etag, files: {path: blobSha}, rejected, error, at }
-let ghPausedUntil = 0;
+// Each app mirrors a branch of its repo. Change checks use git's own protocol
+// (the same request "git fetch" makes), which isn't subject to the REST API's
+// 60-requests-per-hour limit. The REST API is used once per new commit, to list
+// files; files are downloaded from GitHub's raw file server by commit, and only
+// when their content changed.
+const syncState = {};      // name -> { commit, files: {path: blobSha}, rejected, error, at }
+let apiPausedUntil = 0;
 
 const stateFile = app => path.join(app.appDir, '.deploy-state.json');
 function loadSyncState(app) {
   try { syncState[app.name] = Object.assign({ files: {} }, readJson(stateFile(app)), { error: null }); }
-  catch { syncState[app.name] = { tree: null, etag: null, files: {}, rejected: null, error: null, at: null }; }
+  catch { syncState[app.name] = { commit: null, files: {}, rejected: null, error: null, at: null }; }
 }
 function saveSyncState(app) {
   const s = syncState[app.name];
-  try { fs.writeFileSync(stateFile(app), JSON.stringify({ tree: s.tree, etag: s.etag, files: s.files, rejected: s.rejected, at: s.at })); }
+  try { fs.writeFileSync(stateFile(app), JSON.stringify({ commit: s.commit, files: s.files, rejected: s.rejected, at: s.at })); }
   catch (e) { log('deploy', app.name, 'could not save state:', e.message); }
 }
 
-function ghHeaders(accept, etag) {
-  const h = { Accept: accept, 'User-Agent': 'xperion-app-server', 'X-GitHub-Api-Version': '2022-11-28' };
-  if (etag) h['If-None-Match'] = etag;
-  if (cfg.github.tokenFile) {
-    try { const t = fs.readFileSync(cfg.github.tokenFile, 'utf8').replace(/^\uFEFF/, '').trim(); if (t) h.Authorization = 'Bearer ' + t; } catch { /* no token */ }
-  }
-  return h;
+function ghToken() {
+  if (!cfg.github.tokenFile) return '';
+  try { return fs.readFileSync(cfg.github.tokenFile, 'utf8').replace(/^\uFEFF/, '').trim(); } catch { return ''; }
+}
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const encPath = p => p.split('/').map(encodeURIComponent).join('/');
+
+async function remoteHead(app) {
+  const h = { 'User-Agent': 'git/2.45.0 (xperion-app-server)' };
+  const tok = ghToken();
+  if (tok) h.Authorization = 'Basic ' + Buffer.from('x-access-token:' + tok).toString('base64');
+  const r = await fetch(`${cfg.github.webBase.replace(/\/+$/, '')}/${app.repo}.git/info/refs?service=git-upload-pack`,
+    { headers: h, signal: AbortSignal.timeout(20000) });
+  if (r.status === 401 || r.status === 404) throw new Error(`can't read ${app.repo}: private or doesn't exist (re-run setup to add a GitHub token)`);
+  if (!r.ok) throw new Error(`GitHub returned ${r.status} for ${app.repo}`);
+  const m = (await r.text()).match(new RegExp(`([0-9a-f]{40}) refs/heads/${escRe(app.branch)}[\\0\\n]`));
+  if (!m) throw new Error(`branch '${app.branch}' not found in ${app.repo}`);
+  return m[1];
 }
 
-async function ghFetch(url, accept, etag, timeoutMs) {
-  const r = await fetch(url, { headers: ghHeaders(accept, etag), signal: AbortSignal.timeout(timeoutMs || 30000) });
+async function apiGet(url) {
+  if (Date.now() < apiPausedUntil) throw new Error(`waiting for GitHub's API limit to reset (${new Date(apiPausedUntil).toISOString()})`);
+  const h = { Accept: 'application/vnd.github+json', 'User-Agent': 'xperion-app-server', 'X-GitHub-Api-Version': '2022-11-28' };
+  const tok = ghToken();
+  if (tok) h.Authorization = 'Bearer ' + tok;
+  const r = await fetch(url, { headers: h, signal: AbortSignal.timeout(30000) });
   if ((r.status === 403 || r.status === 429) && r.headers.get('x-ratelimit-remaining') === '0') {
     const reset = Number(r.headers.get('x-ratelimit-reset')) * 1000;
-    ghPausedUntil = reset > Date.now() ? reset : Date.now() + 15 * 60000;
-    throw new Error(`GitHub rate limit reached; pausing until ${new Date(ghPausedUntil).toISOString()}`);
+    apiPausedUntil = reset > Date.now() ? reset : Date.now() + 15 * 60000;
+    throw new Error(`GitHub API limit reached; retrying after ${new Date(apiPausedUntil).toISOString()}`);
   }
   return r;
+}
+
+async function rawGet(app, commit, p) {
+  const h = { 'User-Agent': 'xperion-app-server' };
+  const tok = ghToken();
+  if (tok) h.Authorization = 'token ' + tok;
+  return fetch(`${cfg.github.rawBase.replace(/\/+$/, '')}/${app.repo}/${commit}/${encPath(p)}`,
+    { headers: h, signal: AbortSignal.timeout(180000) });
 }
 
 function excluded(p, patterns) {
@@ -367,18 +394,14 @@ async function atomicWrite(file, buf) {
 
 async function syncApp(app) {
   const st = syncState[app.name];
-  const api = cfg.github.apiBase.replace(/\/+$/, '');
-  const r = await ghFetch(`${api}/repos/${app.repo}/git/trees/${encodeURIComponent(app.branch)}?recursive=1`,
-    'application/vnd.github+json', st.etag);
-  if (r.status === 304) return;
-  if (!r.ok) {
-    const hint = r.status === 404 ? ' (private repo? add a GitHub token in setup)' : '';
-    throw new Error(`GitHub returned ${r.status} for ${app.repo}${hint}`);
-  }
+  const head = await remoteHead(app);
+  if (head === st.commit) { if (st.rejected) { st.rejected = null; st.error = null; saveSyncState(app); } return; }
+  if (head === st.rejected) return;
+
+  const r = await apiGet(`${cfg.github.apiBase.replace(/\/+$/, '')}/repos/${app.repo}/git/trees/${head}?recursive=1`);
+  if (!r.ok) throw new Error(`GitHub returned ${r.status} listing files of ${app.repo}`);
   const tree = await r.json();
-  const etag = r.headers.get('etag');
-  if (tree.sha === st.tree) { Object.assign(st, { etag, rejected: null, error: null }); saveSyncState(app); return; }
-  if (tree.sha === st.rejected) { st.etag = etag; saveSyncState(app); return; }
+  if (tree.truncated) throw new Error(`${app.repo} has too many files to mirror`);
 
   const wanted = (tree.tree || []).filter(e => e.type === 'blob' && e.mode !== '120000' && !excluded(e.path, app.exclude));
   for (const e of wanted) if (!safeRelPath(e.path)) throw new Error(`unsafe path in repo: ${e.path}`);
@@ -393,7 +416,11 @@ async function syncApp(app) {
       if (TEXT_EXT.has(path.extname(e.path).toLowerCase())) files.set(e.path, await fsp.readFile(local));   // for validation
       continue;
     }
-    const b = await ghFetch(`${api}/repos/${app.repo}/git/blobs/${e.sha}`, 'application/vnd.github.raw', null, 180000);
+    if (fs.existsSync(local)) {   // already on disk with the same content (e.g. after an upgrade): no download
+      const cur = await fsp.readFile(local);
+      if (gitBlobSha(cur) === e.sha) { files.set(e.path, cur); continue; }
+    }
+    const b = await rawGet(app, head, e.path);
     if (!b.ok) throw new Error(`GitHub returned ${b.status} for ${e.path}`);
     const buf = Buffer.from(await b.arrayBuffer());
     if (gitBlobSha(buf) !== e.sha) throw new Error(`download of ${e.path} was corrupted`);
@@ -402,9 +429,9 @@ async function syncApp(app) {
   }
   const bad = validateApp(app, files);
   if (bad) {
-    Object.assign(st, { rejected: tree.sha, etag, error: `refused ${tree.sha.slice(0, 7)}: ${bad}` });
+    Object.assign(st, { rejected: head, error: `refused ${head.slice(0, 7)}: ${bad}` });
     saveSyncState(app);
-    log('deploy', app.name, 'skipped', tree.sha.slice(0, 7), '-', bad);
+    log('deploy', app.name, 'skipped', head.slice(0, 7), '-', bad);
     return;
   }
 
@@ -416,11 +443,11 @@ async function syncApp(app) {
   for (const p of removed) await fsp.rm(path.join(app.appDir, ...p.split('/')), { force: true });
 
   st.files = Object.fromEntries(wanted.map(e => [e.path, e.sha]));
-  Object.assign(st, { tree: tree.sha, etag, rejected: null, error: null, at: new Date().toISOString() });
+  Object.assign(st, { commit: head, rejected: null, error: null, at: new Date().toISOString() });
   saveSyncState(app);
   log('deploy', app.name, changed.length || removed.length
-    ? `updated to ${tree.sha.slice(0, 7)} (${changed.length} file(s) written${removed.length ? `, ${removed.length} removed` : ''})`
-    : `in sync at ${tree.sha.slice(0, 7)}`);
+    ? `updated to ${head.slice(0, 7)} (${changed.length} file(s) written${removed.length ? `, ${removed.length} removed` : ''})`
+    : `in sync at ${head.slice(0, 7)}`);
 }
 
 function startSync() {
@@ -431,7 +458,6 @@ function startSync() {
   const every = Math.max(5, Number(cfg.github.intervalSeconds) || 120) * 1000;
   const run = async () => {
     for (const app of apps) {
-      if (Date.now() < ghPausedUntil) break;
       try { await syncApp(app); lastErr[app.name] = ''; if (!syncState[app.name].rejected) syncState[app.name].error = null; }
       catch (e) {
         const m = (e && e.message) || String(e);
