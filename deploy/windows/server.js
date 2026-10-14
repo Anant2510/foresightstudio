@@ -60,8 +60,12 @@ function loadConfig() {
   out.apps = c.apps.map((a, i) => {
     const app = Object.assign({ branch: 'main', proxyVar: null, repo: null, model: null, exclude: DEFAULT_EXCLUDE }, a);
     if (!/^[a-z0-9][a-z0-9-]*$/.test(app.name || '')) throw new Error(`apps[${i}].name must be lowercase letters, digits and dashes`);
-    if (seen.has(app.name)) throw new Error(`apps: duplicate name ${app.name}`);
-    seen.add(app.name);
+    app.aliases = [].concat(app.aliases || []).map(String);   // old paths that forward here
+    for (const n of [app.name, ...app.aliases]) {
+      if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(n)) throw new Error(`apps[${i}]: invalid name or alias '${n}'`);
+      if (seen.has(n.toLowerCase())) throw new Error(`apps: '${n}' is used twice`);
+      seen.add(n.toLowerCase());
+    }
     app.basePath = app.basePath || '/' + app.name;
     if (!/^\/[A-Za-z0-9._-]+$/.test(app.basePath)) throw new Error(`apps[${i}].basePath must look like /name`);
     if (!app.appDir) throw new Error(`apps[${i}].appDir is required`);
@@ -259,11 +263,12 @@ async function route(req, res) {
   if (pathname === '/') return send(res, 302, '', { Location: cfg.rootRedirect });
   const app = findApp(pathname);
   if (!app) {
-    // Old GitHub Pages style links such as /CareAI/ -> /careai/
+    // Old links: other capitalisation (/CareAI/ -> /careai/) or a previous name (alias)
     const lower = pathname.toLowerCase();
     for (const a of cfg.apps) {
-      const b = a.basePath.toLowerCase();
-      if (lower === b || lower.startsWith(b + '/')) return send(res, 301, '', { Location: a.basePath + pathname.slice(b.length) + url.search });
+      for (const b of [a.basePath.toLowerCase(), ...a.aliases.map(x => '/' + x.toLowerCase())]) {
+        if (lower === b || lower.startsWith(b + '/')) return send(res, 301, '', { Location: a.basePath + pathname.slice(b.length) + url.search });
+      }
     }
     return notFound(res);
   }

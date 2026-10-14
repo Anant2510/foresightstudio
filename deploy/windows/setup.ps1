@@ -165,6 +165,12 @@ foreach ($a in $apps) {
   $names[$a.name] = $true
   if ("$($a.repo)" -notmatch '^[\w.-]+/[\w.-]+$') { Fail "apps.json: repo for '$($a.name)' must look like owner/name." }
   if ($a.proxyVar -and "$($a.proxyVar)" -notmatch '^[A-Za-z_$][\w$]*$') { Fail "apps.json: proxyVar for '$($a.name)' must be a JavaScript name." }
+  foreach ($al in @($a.aliases)) {
+    if (-not $al) { continue }
+    if ("$al" -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') { Fail "apps.json: alias '$al' for '$($a.name)' must be letters, digits, dots and dashes." }
+    if ($names.ContainsKey("$al")) { Fail "apps.json: '$al' is used twice." }
+    $names["$al"] = $true
+  }
 }
 $aiApps = @($apps | Where-Object { $_.proxyVar })
 Ok "$($apps.Count) app(s) in apps.json: $(($apps | ForEach-Object { $_.name }) -join ', ')"
@@ -284,18 +290,20 @@ if ($private.Count -gt 0) {
     foreach ($rp in $private) { if ((Get-Http @("-H", "User-Agent: xperion-setup", "-H", "Authorization: Bearer $tok", "https://api.github.com/repos/$rp")).Code -ne "200") { $tokOk = $false } }
   }
   if (-not $tokOk) {
-    Write-Host "    These repos are private (or don't exist): $($private -join ', ')"
-    Write-Host "    Paste a fine-grained GitHub token with read-only 'Contents' access to them (input hidden)."
+    Write-Host "    These repos are private or don't exist yet: $($private -join ', ')"
+    Write-Host "    Paste a fine-grained GitHub token with read-only 'Contents' access to them,"
+    Write-Host "    or press Enter to skip (the other apps still deploy)."
     $tok = (ToPlain (Read-Host "    GitHub token" -AsSecureString)).Trim()
-    if (-not $tok) { Fail "No token given. Make those repos public, add a token, or remove them from apps.json." }
-    foreach ($rp in $private) {
-      $chk = Get-Http @("-H", "User-Agent: xperion-setup", "-H", "Authorization: Bearer $tok", "https://api.github.com/repos/$rp")
-      if ($chk.Code -ne "200") { Fail "That token can't read $rp (HTTP $($chk.Code)). Check the repo name in apps.json and the token's access." }
+    if ($tok) {
+      foreach ($rp in $private) {
+        $chk = Get-Http @("-H", "User-Agent: xperion-setup", "-H", "Authorization: Bearer $tok", "https://api.github.com/repos/$rp")
+        if ($chk.Code -ne "200") { Fail "That token can't read $rp (HTTP $($chk.Code)). Check the repo name in apps.json and the token's access." }
+      }
+      $newToken = $tok; $tokOk = $true
     }
-    $newToken = $tok
   }
-  $useToken = $true
-  Ok "GitHub token works for the private repo(s)"
+  if ($tokOk) { $useToken = $true; Ok "GitHub token works for the private repo(s)" }
+  else { Warn "No token: $($private -join ', ') won't deploy until the repo exists and is public (or re-run with a token)." }
 } else {
   Ok "No private repos found: no GitHub token needed"
 }
@@ -320,6 +328,15 @@ Ok "Folders under $Root locked down"
 Copy-Item $nodeSrc $NodeExe -Force
 Copy-Item $ServerSrc $ServerJs -Force
 Ok "App server and Node runtime installed"
+
+# Upgrade from the Foresight-only install: copy the live Foresight page across first,
+# so it keeps serving even before the first GitHub download completes.
+$fsNewIdx = Join-Path (Join-Path $AppsDir "foresightstudio") "index.html"
+$fsOldIdx = Join-Path $LegacyDir "app\index.html"
+if ((Test-Path $fsOldIdx) -and (Test-Path (Split-Path $fsNewIdx)) -and -not (Test-Path $fsNewIdx)) {
+  Copy-Item $fsOldIdx $fsNewIdx -Force
+  Ok "Foresight carried over as-is (same page, same address)"
+}
 
 if (-not $keepKey) { WriteText $KeyFile $key }
 elseif (-not (Test-Path $KeyFile) -and (Test-Path $LegacyKey)) { Move-Item $LegacyKey $KeyFile -Force }
@@ -350,7 +367,8 @@ $cfgApps = @()
 foreach ($a in $apps) {
   $branch = "main"; if ($a.branch) { $branch = "$($a.branch)" }
   $pv = $null; if ($a.proxyVar) { $pv = "$($a.proxyVar)" }
-  $cfgApps += [ordered]@{ name = "$($a.name)"; basePath = "/$($a.name)"; appDir = (Join-Path $AppsDir $a.name); repo = "$($a.repo)"; branch = $branch; proxyVar = $pv }
+  $al = @(); foreach ($x in @($a.aliases)) { if ($x) { $al += "$x" } }
+  $cfgApps += [ordered]@{ name = "$($a.name)"; basePath = "/$($a.name)"; appDir = (Join-Path $AppsDir $a.name); repo = "$($a.repo)"; branch = $branch; proxyVar = $pv; aliases = $al }
 }
 $cfgObj = [ordered]@{
   host = "127.0.0.1"; port = $Port; domain = $domainVal; email = $emailVal
@@ -412,6 +430,7 @@ $deployed = @{}
 foreach ($a in @($health.apps)) {
   if ($a.synced -and -not $a.error) { Ok "$($a.name) deployed ($($a.synced.Substring(0, 7)))"; $deployed[$a.name] = $true }
   elseif ($a.synced) { Warn "$($a.name): serving the last good version; latest change not applied: $($a.error)"; $deployed[$a.name] = $true }
+  elseif (Test-Path (Join-Path (Join-Path $AppsDir $a.name) "index.html")) { Warn "$($a.name): serving the existing copy; GitHub check will retry: $($a.error)"; $deployed[$a.name] = $true }
   elseif ($a.error) { Warn "$($a.name) not deployed: $($a.error)"; $failed = $true }
   else { Warn "$($a.name) still downloading; it will finish in the background (log: $ServerLog)"; $failed = $true }
 }
@@ -420,7 +439,7 @@ if (Get-ScheduledTask -TaskName $LegacyTask -ErrorAction SilentlyContinue) {
   Unregister-ScheduledTask -TaskName $LegacyTask -Confirm:$false
   Ok "Removed the old task '$LegacyTask'"
 }
-if (Test-Path $LegacyDir) {
+if ((Test-Path $LegacyDir) -and (Test-Path $fsNewIdx)) {
   Remove-Item $LegacyDir -Recurse -Force -ErrorAction SilentlyContinue
   if (-not (Test-Path $LegacyDir)) { Ok "Removed the old folder $LegacyDir" } else { Warn "Couldn't fully remove $LegacyDir; delete it later." }
 }

@@ -1,11 +1,12 @@
 {
-  "_readme": "Apps hosted on the xPerion VM. Each is served at https://<domain>/<name>/ and mirrored from its GitHub repo. Add proxyVar only for apps that call the AI Engine; its index.html must read window.<proxyVar>. After editing, re-run deploy/windows/setup.ps1 on the VM.",
+  "_readme": "Apps hosted on the xPerion VM. Each is served at https://<domain>/<name>/ and mirrored from its GitHub repo. aliases = old paths that forward to the app. Add proxyVar only for apps that call the AI Engine; their index.html must read window.<proxyVar>. After editing, push and re-run deploy/windows/setup.ps1 on the VM.",
   "rootRedirect": "/foresightstudio/",
   "apps": [
-    { "name": "foresightstudio",      "repo": "anant2510/foresightstudio",      "branch": "main", "proxyVar": "FORESIGHT_PROXY" },
-    { "name": "careai",               "repo": "anant2510/CareAI",               "branch": "main" },
-    { "name": "voyagerai",            "repo": "anant2510/VoyagerAI",            "branch": "main" },
-    { "name": "wealthai",             "repo": "anant2510/wealthai",             "branch": "main" },
-    { "name": "westjet-aa-dashboard", "repo": "anant2510/westjet-aa-dashboard", "branch": "main", "proxyVar": "INTELLISIGHT_PROXY" }
+    { "name": "foresightstudio", "repo": "anant2510/foresightstudio",      "branch": "main", "proxyVar": "FORESIGHT_PROXY" },
+    { "name": "intellisight",    "repo": "anant2510/westjet-aa-dashboard", "branch": "main", "proxyVar": "INTELLISIGHT_PROXY", "aliases": ["westjet-aa-dashboard"] },
+    { "name": "voyagerai",       "repo": "anant2510/VoyagerAI",            "branch": "main" },
+    { "name": "careai",          "repo": "anant2510/CareAI",               "branch": "main" },
+    { "name": "assureai",        "repo": "anant2510/AssureAI",             "branch": "main" },
+    { "name": "wealthai",        "repo": "anant2510/wealthai",             "branch": "main" }
   ]
 }
