@@ -74,7 +74,7 @@ function loadConfig() {
     if (app.proxyVar && !/^[A-Za-z_$][\w$]*$/.test(app.proxyVar)) throw new Error(`apps[${i}].proxyVar must be a JavaScript name`);
     if (app.repo && !/^[\w.-]+\/[\w.-]+$/.test(app.repo)) throw new Error(`apps[${i}].repo must look like owner/name`);
     app.configJs = app.proxyVar
-      ? `// Served by the xPerion app server. No API key here: the server adds it.\nwindow.${app.proxyVar} = "api/v1/messages";\n`
+      ? `// Served by the CX Nova app server. No API key here: the server adds it.\nwindow.${app.proxyVar} = "api/v1/messages";\n`
       : null;
     return app;
   });
@@ -259,7 +259,7 @@ async function route(req, res) {
   if (!checkAuth(req)) {
     const rl = allow(ip);   // failed logins count against the same per-IP limit
     if (!rl.ok) return send(res, 429, 'Too many attempts', { 'Retry-After': String(rl.retryAfter), 'Content-Type': 'text/plain' });
-    return send(res, 401, 'Login required', { 'WWW-Authenticate': 'Basic realm="xPerion demos", charset="UTF-8"', 'Content-Type': 'text/plain' });
+    return send(res, 401, 'Login required', { 'WWW-Authenticate': 'Basic realm="CX Nova demos", charset="UTF-8"', 'Content-Type': 'text/plain' });
   }
   if (pathname === '/') return send(res, 302, '', { Location: cfg.rootRedirect });
   const app = findApp(pathname);
