@@ -3,7 +3,7 @@
 #
 # Works in any app repo (foresightstudio, westjet-aa-dashboard, CareAI, ...):
 # copy this file over .github/workflows/deploy.yml (create it if the repo has none).
-# Target: https://xperion2.centralindia.cloudapp.azure.com/<repo name in lowercase>/
+# Target: https://cxnova2.centralindia.cloudapp.azure.com/<repo name in lowercase>/
 # Override with a repo variable XPERION_URL if an app lives somewhere else.
 #
 # Repos that publish Pages "from a branch" (no workflow today) also need:
@@ -39,7 +39,7 @@ jobs:
           OVERRIDE: ${{ vars.XPERION_URL || vars.FORESIGHT_URL }}
         run: |
           APP=$(echo "${GITHUB_REPOSITORY#*/}" | tr '[:upper:]' '[:lower:]')
-          TARGET="${OVERRIDE:-https://xperion2.centralindia.cloudapp.azure.com/$APP/}"
+          TARGET="${OVERRIDE:-https://cxnova2.centralindia.cloudapp.azure.com/$APP/}"
           echo "Redirecting to $TARGET"
           mkdir -p site
           cat > site/index.html <<HTML
