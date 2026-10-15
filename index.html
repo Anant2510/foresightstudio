@@ -249,12 +249,20 @@ label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bot
         <div style="display:inline-block;background:var(--orange-light);color:var(--orange);font-size:12px;font-weight:700;padding:6px 16px;border-radius:20px;margin-bottom:20px;border:1px solid rgba(241,91,64,0.15)">AI-Powered Creative Testing</div>
         <h1 style="font-size:42px;font-weight:800;line-height:1.15;letter-spacing:-1px;color:var(--text);margin-bottom:16px">Know if your <span style="color:var(--orange)">creative will land</span> before you launch</h1>
         <p style="font-size:16px;color:var(--text2);line-height:1.7;margin-bottom:32px">Test digital ads, emails, and landing pages against AI-generated synthetic personas built from real CDP data. Get resonance scores, detailed reasoning, and rewrite suggestions — in minutes, not weeks. Includes preloaded demos for Airlines and Banking.</p>
-        <div style="display:flex;gap:12px;align-items:center">
-          <button class="btn btn-accent" style="padding:14px 32px;font-size:16px" onclick="launchApp()" id="launchBtn" disabled>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-accent" style="padding:14px 28px;font-size:16px;white-space:nowrap" onclick="launchApp()" id="launchBtn" disabled>
             <span id="launchText">Connecting...</span>
           </button>
-          <button class="btn btn-ghost" style="padding:14px 24px" onclick="document.getElementById('landingFeatures').scrollIntoView({behavior:'smooth'})">Learn More &#8595;</button>
+          <button class="btn btn-ghost" style="padding:14px 20px;white-space:nowrap" onclick="document.getElementById('landingFeatures').scrollIntoView({behavior:'smooth'})">Learn More &#8595;</button>
         </div>
+        <a href="knowledge-graph.html" target="_blank" rel="noopener" onclick="return openKnowledgeGraph(event)" title="Opens in a separate window"
+           style="margin-top:18px;display:inline-flex;align-items:center;gap:12px;padding:10px 16px 10px 10px;border-radius:12px;border:1px solid var(--border2);background:var(--surface);text-decoration:none;color:var(--text)">
+          <span style="width:34px;height:34px;border-radius:9px;background:var(--orange-light);color:var(--orange);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.2 7.4l3.6 8.4M16.8 7.4l-3.6 8.4M7.5 6h9"/></svg>
+          </span>
+          <span style="line-height:1.3"><span style="display:block;font-size:14px;font-weight:700">Explore the Knowledge Graph</span><span style="display:block;font-size:12px;color:var(--text3)">Personas, creatives, verdicts and outcomes &mdash; connected</span></span>
+          <span aria-hidden="true" style="color:var(--orange);font-weight:700;margin-left:6px">&#8599;</span>
+        </a>
         <div id="landingError" style="margin-top:16px;font-size:13px;color:var(--red);display:none"></div>
       </div>
       <div style="flex:1;display:flex;justify-content:center;padding-left:40px">
@@ -1471,6 +1479,15 @@ async function sendChat(){
     S.chatHistory.push({role:"user",content:msg});S.chatHistory.push({role:"assistant",content:txt});
   }catch(e){var el=document.getElementById("typingMsg");if(el)el.remove();ca.innerHTML+='<div class="chat-msg agent"><div class="chat-icon">R</div><div class="chat-bubble" style="color:var(--red)">Error: '+esc(e.message)+'</div></div>'}
   document.getElementById("chatSendBtn").disabled=false;ca.scrollTop=ca.scrollHeight;
+}
+</script>
+<script>
+// Knowledge graph: open in its own window (falls back to a new tab if pop-ups are blocked)
+function openKnowledgeGraph(e){
+  var w=Math.min(screen.availWidth||1600,1680), h=Math.min(screen.availHeight||1000,1050);
+  var win=window.open('knowledge-graph.html','foresightKnowledgeGraph','popup=yes,width='+w+',height='+h+',left=0,top=0');
+  if(win){ try{win.focus();}catch(x){} if(e) e.preventDefault(); return false; }
+  return true;
 }
 </script>
 </body>
