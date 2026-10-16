@@ -1086,7 +1086,7 @@ async function generateManual(){
   parts.forEach(function(id,i){var v=document.getElementById(id).value.trim();if(v)prompt+=labels[i]+": "+v+"\n"});
   prompt+='\nRespond ONLY with JSON:\n{"name":"'+name+'","segment":"<6-8 word description>","profile":"<full profile in second person>"}';
   document.getElementById("genManualBtn").disabled=true;document.getElementById("genStatus").textContent="Generating persona...";
-  try{var txt=await apiCall(prompt,800);var c=txt.replace(/```json/g,"").replace(/```/g,"").trim();var m=c.match(/\{[\s\S]*\}/);showPreview([JSON.parse(m?m[0]:c)])}catch(e){document.getElementById("genStatus").innerHTML='<span style="color:var(--red)">Error: '+esc(e.message)+'</span>'}
+  try{var txt=await apiCall(prompt,800);showPreview([extractJson(txt,"{",function(v){return !Array.isArray(v)&&("profile" in v||"name" in v)})])}catch(e){document.getElementById("genStatus").innerHTML='<span style="color:var(--red)">Error: '+esc(e.message)+'</span>'}
   document.getElementById("genManualBtn").disabled=false;
 }
 async function generateFromData(){
@@ -1096,7 +1096,7 @@ async function generateFromData(){
   if(ctx)prompt+="\nCONTEXT: "+ctx+"\n";
   prompt+='\nRespond ONLY with a JSON array:\n[{"name":"...","segment":"...","profile":"..."}]\nMax 6 personas.';
   document.getElementById("genDataBtn").disabled=true;document.getElementById("genStatus").textContent="Analyzing segment data...";
-  try{var txt=await apiCall(prompt,2000);var c=txt.replace(/```json/g,"").replace(/```/g,"").trim();var m=c.match(/\[[\s\S]*\]/);var p=JSON.parse(m?m[0]:c);if(!Array.isArray(p))p=[p];showPreview(p)}catch(e){document.getElementById("genStatus").innerHTML='<span style="color:var(--red)">Error: '+esc(e.message)+'</span>'}
+  try{var txt=await apiCall(prompt,2000);var p;try{p=extractJson(txt,"[")}catch(x){p=extractJson(txt,"{")}if(!Array.isArray(p))p=[p];showPreview(p)}catch(e){document.getElementById("genStatus").innerHTML='<span style="color:var(--red)">Error: '+esc(e.message)+'</span>'}
   document.getElementById("genDataBtn").disabled=false;
 }
 function showPreview(personas){
@@ -1107,9 +1107,64 @@ function showPreview(personas){
 function savePersona(i){var p=window._pp[i];var id="c_"+Date.now()+"_"+i;var c=loadCustom();c.push({id:id,name:p.name,segment:p.segment,profile:p.profile,preset:false});saveCustom(c);S.sel.push(id);renderPersonas();updateRunBtn();var btns=document.getElementById("previewArea").querySelectorAll(".save-btn");btns[i].textContent="Saved!";btns[i].style.background="var(--text3)";btns[i].disabled=true}
 
 // EXPERIMENT
-function bp(persona,creative){var f=FIELDS[S.type];var block="";f.items.forEach(function(item){if(creative[item.k])block+=item.l+": "+creative[item.k]+"\n"});return "You are a synthetic consumer persona for creative testing in financial services and travel marketing. Stay fully in character. Never mention that you are an AI.\n\nPERSONA:\n"+persona.profile+"\n\nEvaluate this "+f.label.toLowerCase()+":\n"+block+'\nRespond ONLY with JSON:\n{"scores":{"Relevance":<1-10>,"Emotional Resonance":<1-10>,"Clarity":<1-10>,"Trust":<1-10>,"Action Likelihood":<1-10>},"overall":<1-10>,"first_reaction":"<1 sentence>","reasoning":{"what_works":"<1-2 sentences>","what_doesnt":"<1-2 sentences>","missing":"<1 sentence>"},"would_you_act":"<yes/no/maybe + reason>","rewrite_suggestion":"<one line>"}'}
+function bp(persona,creative){var f=FIELDS[S.type];var block="";f.items.forEach(function(item){if(creative[item.k])block+=item.l+": "+creative[item.k]+"\n"});return "You are a synthetic consumer persona for creative testing in financial services and travel marketing. Stay fully in character. Never mention that you are an AI.\n\nPERSONA:\n"+persona.profile+"\n\nEvaluate this "+f.label.toLowerCase()+":\n"+block+'\nRespond with exactly one JSON object in this format and nothing else (no markdown, no notes before or after it):\n{"scores":{"Relevance":<1-10>,"Emotional Resonance":<1-10>,"Clarity":<1-10>,"Trust":<1-10>,"Action Likelihood":<1-10>},"overall":<1-10>,"first_reaction":"<1 sentence>","reasoning":{"what_works":"<1-2 sentences>","what_doesnt":"<1-2 sentences>","missing":"<1 sentence>"},"would_you_act":"<yes/no/maybe + reason>","rewrite_suggestion":"<one line>"}'}
 
-async function callEval(prompt){var t=await apiCall(prompt,1000);var c=t.replace(/```json/g,"").replace(/```/g,"").trim();var m=c.match(/\{[\s\S]*\}/);return JSON.parse(m?m[0]:c)}
+// Read the first complete JSON value from an AI reply, ignoring any text, notes or extra blocks
+// before or after it (the old "first { to last }" approach broke when a reply added a note).
+function extractJson(text,open,accept){
+  var close=open==="["?"]":"}",t=String(text||"").replace(/```(?:json)?/gi,""),first=null;
+  for(var s=t.indexOf(open);s!==-1;s=t.indexOf(open,s+1)){
+    var depth=0,inStr=false,esc=false;
+    for(var i=s;i<t.length;i++){
+      var ch=t.charAt(i);
+      if(inStr){if(esc)esc=false;else if(ch==="\\")esc=true;else if(ch==='"')inStr=false;continue}
+      if(ch==='"')inStr=true;
+      else if(ch==="{"||ch==="[")depth++;
+      else if(ch==="}"||ch==="]"){depth--;if(depth===0){
+        if(ch===close){var cand=t.slice(s,i+1),v=null;
+          try{v=JSON.parse(cand)}catch(e){try{v=JSON.parse(cand.replace(/,\s*([}\]])/g,"$1"))}catch(e2){}}
+          if(v!==null&&typeof v==="object"){if(!accept||accept(v))return v;if(first===null)first=v}}
+        break}}
+    }
+  }
+  if(first!==null&&!accept)return first;
+  throw new Error("no readable JSON in the reply");
+}
+// Make every evaluation look the same, whatever small variations the model uses.
+function normalizeEval(r){
+  var key=function(k){return String(k).toLowerCase().replace(/[^a-z]/g,"")};
+  var num=function(v){var n=parseFloat(String(v==null?"":v));return isNaN(n)?0:Math.max(0,Math.min(10,n))};
+  var pick=function(o,ks){if(!o||typeof o!=="object")return "";for(var i=0;i<ks.length;i++){var v=o[ks[i]];if(v!=null&&String(v).trim())return String(v)}return ""};
+  var src=r.scores||r.Scores||r.score||{},look={};Object.keys(src).forEach(function(k){look[key(k)]=src[k]});
+  var scores={};DIMS.forEach(function(d){scores[d]=num(look[key(d)])});
+  var ov=num(r.overall!=null?r.overall:r.Overall);
+  if(!ov){var vals=DIMS.map(function(d){return scores[d]}).filter(function(v){return v>0});ov=vals.length?Math.round(vals.reduce(function(a,b){return a+b},0)/vals.length*10)/10:0}
+  var rs=r.reasoning||r.Reasoning||{};
+  return {scores:scores,overall:ov,
+    first_reaction:pick(r,["first_reaction","firstReaction","reaction"]),
+    reasoning:{what_works:pick(rs,["what_works","works"])||pick(r,["what_works"]),
+      what_doesnt:pick(rs,["what_doesnt","what_doesn't","what_does_not_work","doesnt_work"])||pick(r,["what_doesnt"]),
+      missing:pick(rs,["missing","whats_missing","what's_missing","what_is_missing","what_missing"])||pick(r,["missing","whats_missing","what_is_missing"])},
+    would_you_act:pick(r,["would_you_act","would_act","wouldYouAct"]),
+    rewrite_suggestion:pick(r,["rewrite_suggestion","rewrite","suggested_rewrite"])};
+}
+// One evaluation, with a second attempt if the reply can't be read or the service hiccups.
+async function callEval(prompt){
+  var lastErr=null;
+  for(var attempt=0;attempt<2;attempt++){
+    try{
+      var t=await apiCall(attempt?prompt+"\n\nReply with exactly one JSON object and nothing else.":prompt,1500);
+      var r=normalizeEval(extractJson(t,"{",function(v){return !Array.isArray(v)&&("scores" in v||"Scores" in v||"overall" in v)}));
+      if(r.overall>0)return r;
+      lastErr=new Error("the reply had no scores");
+    }catch(e){
+      lastErr=e;
+      if(/^(4\d\d)\b/.test(e.message)&&!/^429\b/.test(e.message))break;   // a real request error: retrying won't help
+      await new Promise(function(res){setTimeout(res,1200)});
+    }
+  }
+  throw new Error("Couldn't read this persona's evaluation ("+(lastErr&&lastErr.message)+")");
+}
 
 function procLog(msg,type){
   var log=document.getElementById("procLog");
@@ -1182,11 +1237,12 @@ function renderCard(x){
 
 function getSuggestions(){
   var sug=[];if(S.resA.length===0)return sug;
-  var low=S.resA.reduce(function(m,x){return x.r.overall<m.r.overall?x:m},S.resA[0]);
-  var high=S.resA.reduce(function(m,x){return x.r.overall>m.r.overall?x:m},S.resA[0]);
+  var ok=S.resA.filter(function(x){return x.r.overall>0});if(ok.length===0)return sug;
+  var low=ok.reduce(function(m,x){return x.r.overall<m.r.overall?x:m},ok[0]);
+  var high=ok.reduce(function(m,x){return x.r.overall>m.r.overall?x:m},ok[0]);
   sug.push("Why did "+low.p.name+" score so low?");sug.push("Rewrite the headline for "+low.p.name);
   if(high.p.id!==low.p.id)sug.push("What made "+high.p.name+" respond well?");
-  var da={};DIMS.forEach(function(d){var s=0;S.resA.forEach(function(x){s+=((x.r.scores&&x.r.scores[d])||0)});da[d]=s/S.resA.length});
+  var da={};DIMS.forEach(function(d){var s=0;ok.forEach(function(x){s+=((x.r.scores&&x.r.scores[d])||0)});da[d]=s/ok.length});
   var wd=DIMS.reduce(function(w,d){return da[d]<da[w]?d:w},DIMS[0]);
   sug.push("How can I improve "+wd+"?");
   if(S.mode==="ab"){sug.push("Create a Variant C combining the best of A and B");sug.push("Which segments should get which variant?")}
